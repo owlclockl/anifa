@@ -45,9 +45,9 @@ LICHEN = c.state('glow_lichen', down='true', up='false', north='false', south='f
 class Valley(s.DeepGrid):
     limits = (X0, X1, Y0, Y1, Z0, Z1)
 
-    def __init__(self) -> None:
+    def __init__(self, *, pure_sculk: bool = False) -> None:
         self.blocks = np.zeros(SHAPE, dtype=np.int16)
-        self.box(s.X0, s.X1, s.Y0, s.Y1, s.Z0, s.Z1)[:] = s.build()
+        self.box(s.X0, s.X1, s.Y0, s.Y1, s.Z0, s.Z1)[:] = s.build(pure_sculk=pure_sculk)
 
 
 def darken(g: Valley) -> None:
@@ -82,7 +82,7 @@ def ground_line(x: int) -> float:
     return 180 + .57 * (x - 44) + 5.7 * math.sin((x - 48) * .115)
 
 
-def landform(g: Valley) -> np.ndarray:
+def landform(g: Valley, *, pure_sculk: bool = False) -> np.ndarray:
     # The footprint is a low ridge with two broken shelves, not a rectangular slab.
     height = np.full(SHAPE[1:], Y0, dtype=np.int8)
     fixed = np.any(g.box(X0, X1, 0, 4, Z0, Z1), axis=0)
@@ -120,7 +120,9 @@ def landform(g: Valley) -> np.ndarray:
             crust = near and (split < 7.9 or w > .23)
             top = s.SCULK if crust else BLACKSTONE if w > .07 else s.COBBLE if w < -.31 else s.BASALT
             if chasm:
-                if abs(seam) < 1.65 + .4 * w:
+                if pure_sculk:
+                    top = s.SCULK if split < 4.1 or w > -.35 else top
+                elif abs(seam) < 1.65 + .4 * w:
                     g.put(x, h - 1, z, s.LUMEN if (x + z) % 7 < 4 else s.DARK_TEAL)
                     top = TEAL_GLASS
                 else:
@@ -362,14 +364,27 @@ BRANCHES = (
 )
 
 
-def root_system(g: Valley) -> None:
+# The later Seal's crown climbs around the crossing tower instead of leaning over the west roof.
+CROWN_BRANCHES = (
+    ((8, 133, 113, 2.8), (7, 136, 118, 3.15), (6, 139, 124, 2.7), (2, 143, 126, 2.5),
+     (-2, 147, 124, 1.9), (-3, 151, 121, 1.25)),
+    ((6, 139, 123, 2.1), (9, 142, 124, 1.5), (12, 146, 121, 1.0), (13, 150, 119, .7)),
+)
+
+
+def root_system(g: Valley, *, pure_sculk: bool = False) -> None:
     mass = np.full(SHAPE, -2, dtype=np.float32)
-    seams = mass.copy()
-    for i, path in enumerate(BRANCHES):
+    seams = None if pure_sculk else mass.copy()
+    routes = CROWN_BRANCHES + BRANCHES[2:] if pure_sculk else BRANCHES
+    for i, path in enumerate(routes):
         s.stroke(mass, path, vertical=.8 if i in (6, 8) else 1., limits=g.limits)
-        thread = [(x + r*.64, y + r*.39, z + r * (-.42 if i % 2 == 0 else .40), min(.95, .39 + r*.13))
-                  for x, y, z, r in path]
-        s.stroke(seams, thread, limits=g.limits)
+        if seams is not None:
+            thread = [(x + r*.64, y + r*.39, z + r * (-.42 if i % 2 == 0 else .40), min(.95, .39 + r*.13))
+                      for x, y, z, r in path]
+            s.stroke(seams, thread, limits=g.limits)
+    if seams is None:
+        g.blocks[mass >= 0] = s.SCULK
+        return
     y, z, x = np.where(mass >= 0)
     yy, zz, xx = y + Y0, z + Z0, x + X0
     wave = np.sin(xx*.41 + yy*.79 + zz*.28) + .50*np.cos(zz*.43 - xx*.27 + yy*.37)
@@ -393,15 +408,20 @@ def remove_stray_voxels(g: Valley) -> None:
     g.blocks[~connected] = AIR
 
 
+NONCOLLIDING = frozenset('minecraft:' + name for name in (
+    'air', 'light', 'dark_oak_wall_sign', 'sculk_vein', 'glow_lichen', 'wheat', 'carrots', 'potatoes',
+))
+
+
 def block_light(blocks: np.ndarray) -> np.ndarray:
     """Conservative block-only flood; no skylight or propagation through solid shapes."""
     emission = {'sea_lantern': 15, 'ochre_froglight': 15, 'lantern': 15, 'soul_lantern': 10,
-                'crying_obsidian': 10, 'glow_lichen': 7, 'sculk_catalyst': 6}
-    strength = np.array([emission.get(name.removeprefix('minecraft:'), 0) for name, _ in c.STATES], dtype=np.uint8)
+                'crying_obsidian': 10, 'glow_lichen': 7, 'sculk_catalyst': 6, 'amethyst_cluster': 5}
+    strength = np.array([int(dict(props)['level']) if name == 'minecraft:light'
+                         else emission.get(name.removeprefix('minecraft:'), 0) for name, props in c.STATES], dtype=np.uint8)
     light = strength[blocks]
     # Treat even stairs, glass, chains and slabs as opaque: this is a lower bound, not a skylight mock.
-    through = np.array([name in ('minecraft:air', 'minecraft:sculk_vein', 'minecraft:glow_lichen')
-                        for name, _ in c.STATES])[blocks]
+    through = np.array([name in NONCOLLIDING for name, _ in c.STATES])[blocks]
     nxt = np.empty_like(light)
     for _ in range(14):
         nxt.fill(0)
@@ -423,8 +443,11 @@ def could_support_spawn(name: str, props: tuple) -> bool:
         return dict(props)['type'] != 'bottom'
     if name.endswith('_stairs'):
         return dict(props)['half'] != 'bottom'
-    if name.endswith(('_glass', ':glass', '_carpet', '_lantern', ':lantern', '_chain', '_bars',
-                      '_vein', '_lichen', '_sensor', '_shrieker', '_wall', ':air')):
+    if name in NONCOLLIDING or name.endswith((
+        '_glass', ':glass', '_carpet', '_lantern', ':lantern', '_chain', '_bars', '_sensor', '_shrieker',
+        '_wall', '_fence', '_fence_gate', '_door', '_bed', ':water', ':chest', ':anvil', ':grindstone',
+        ':stonecutter', ':enchanting_table', ':composter', ':bell', ':lectern', ':amethyst_cluster',
+    )):
         return False
     return True
 
@@ -432,10 +455,8 @@ def could_support_spawn(name: str, props: tuple) -> bool:
 def spawn_surfaces(blocks: np.ndarray) -> np.ndarray:
     """Potential foot positions above the supplied floors, indexed by the supporting block."""
     support = np.array([could_support_spawn(*entry) for entry in c.STATES], dtype=bool)
-    # Other blocks used here have collision at the spawning cell's center (including bars,
-    # chains and carpets), or are the noncolliding growth considered alongside air.
-    free = np.array([name in ('minecraft:air', 'minecraft:sculk_vein', 'minecraft:glow_lichen')
-                     for name, _ in c.STATES], dtype=bool)
+    # Consider thin growth and crops alongside air; water and collision shapes are excluded.
+    free = np.array([name in NONCOLLIDING for name, _ in c.STATES], dtype=bool)
     return support[blocks[:-1]] & free[blocks[1:]]
 
 
@@ -503,14 +524,14 @@ def spawn_protection(g: Valley) -> None:
     assert not np.any(spawn_exposure(occupied, block_light(occupied))), 'A dark spawnable surface remained'
 
 
-def precinct() -> Valley:
+def precinct(*, pure_sculk: bool = False) -> Valley:
     """The unprotected geometry, reused by larger editions before their own light pass."""
-    g = Valley()
+    g = Valley(pure_sculk=pure_sculk)
     darken(g)
-    surface = landform(g)
+    surface = landform(g, pure_sculk=pure_sculk)
     buried_stones(g, surface)
     portal_square(g)
-    root_system(g)
+    root_system(g, pure_sculk=pure_sculk)
     paths_and_bridges(g)
     rift_overlook(g)
     working_frame(g)

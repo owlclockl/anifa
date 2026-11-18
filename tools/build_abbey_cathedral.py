@@ -42,9 +42,9 @@ TEAL = c.GLASS['light_blue']
 class Abbey(s.DeepGrid):
     limits = (X0, X1, Y0, Y1, Z0, Z1)
 
-    def __init__(self) -> None:
+    def __init__(self, *, pure_sculk: bool = False) -> None:
         self.blocks = np.zeros(SHAPE, dtype=np.int16)
-        self.box(*r.Valley.limits)[:] = r.precinct().blocks
+        self.box(*r.Valley.limits)[:] = r.precinct(pure_sculk=pure_sculk).blocks
 
 
 def surface(g: Abbey, x: int, z: int, height: int, full: int, slab: int, backing: int = BRICK) -> int:
@@ -537,7 +537,7 @@ def abbey_walks(g: Abbey) -> None:
             r.pier_lamp(g, x, y, z)
 
 
-def chapel_scars(g: Abbey) -> None:
+def chapel_scars(g: Abbey, *, pure_sculk: bool = False) -> None:
     # Local infection colonizes the base of the chapel; the nave and the doorway stay traversable.
     cx, cz = CHAPEL
     curves = (
@@ -552,6 +552,9 @@ def chapel_scars(g: Abbey) -> None:
     field = np.full((44, e - d + 1, b - a + 1), -1., dtype=np.float32)
     for path in curves:
         s.stroke(field, path, limits=local_limits)
+    if pure_sculk:
+        g.box(*local_limits)[field >= 0] = s.SCULK
+        return
     yy, zz, xx = np.where(field >= 0)
     x, y, z = xx + a, yy - 3, zz + d
     switch = .66*np.sin(x*.63 + z*.51 - y*.42) + .47*np.sin(y*.92 + z*.21)
@@ -560,22 +563,26 @@ def chapel_scars(g: Abbey) -> None:
     g.blocks[y - Y0, z - Z0, x - X0] = palette
 
 
-def assemble() -> Abbey:
-    g = Abbey()
-    for part in (carved_nave, rounded_choir, helical_stairs, abbey_ridge, cloister, chapel, abbey_walks, chapel_scars):
+def assemble(*, pure_sculk: bool = False) -> Abbey:
+    g = Abbey(pure_sculk=pure_sculk)
+    for part in (carved_nave, rounded_choir, helical_stairs, abbey_ridge, cloister, chapel, abbey_walks):
         part(g)
+    chapel_scars(g, pure_sculk=pure_sculk)
     for x, z, y, radius in ((0, 28, 37, 4), (0, 62, 37, 4), (0, 96, 37, 4), (0, c.CROSS, 33, 6)):
         crown_lamp(g, x, z, y, radius)
     return g
 
 
-def repair_growth(g: Abbey) -> None:
-    """Remove unsupported faces of growth left by carving around the old choir."""
+def repair_growth(g: Abbey, *, stone_fringe: bool = False) -> None:
+    """Remove unsupported faces, and optionally keep the surface growth off the sculk itself."""
     blocks = g.blocks
     support = np.array([
         name.endswith('_glass') or (r.could_support_spawn(name, props) and not name.endswith(('_stairs', '_slab')))
         for name, props in c.STATES
-    ])[blocks]
+    ])
+    if stone_fringe:
+        support[s.SCULK] = False
+    support = support[blocks]
     for state in np.unique(blocks):
         name, properties = c.STATES[state]
         if name not in ('minecraft:sculk_vein', 'minecraft:glow_lichen'):

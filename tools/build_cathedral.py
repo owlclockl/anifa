@@ -942,9 +942,12 @@ def vector(x: int, y: int, z: int) -> nbt.Compound:
 
 
 def save(path: Path, blocks: np.ndarray, preview: Path | None = None, *, variant: str = 'original',
-         title: str | None = None, description: str | None = None) -> None:
+         title: str | None = None, description: str | None = None,
+         block_entities: dict[tuple[int, int, int], nbt.Compound] | None = None) -> None:
+    """Write a cropped schematic. Block entity keys are input-array indices in (x, y, z) order."""
     ys, zs, xs = np.nonzero(blocks)
-    blocks = blocks[ys.min():ys.max() + 1, zs.min():zs.max() + 1, xs.min():xs.max() + 1]
+    xmin, ymin, zmin = int(xs.min()), int(ys.min()), int(zs.min())
+    blocks = blocks[ymin:ys.max() + 1, zmin:zs.max() + 1, xmin:xs.max() + 1]
     dy, dz, dx = blocks.shape
     colorway = COLORWAYS[variant]
     # Remap only material names and keep all block properties, including stair facings.
@@ -985,10 +988,19 @@ def save(path: Path, blocks: np.ndarray, preview: Path | None = None, *, variant
             rgb = np.asarray(square, dtype=np.uint32).reshape(-1, 3)
         argb = 0xff000000 | rgb[:, 0] << 16 | rgb[:, 1] << 8 | rgb[:, 2]
         metadata['PreviewImageData'] = nbt.IntArray(argb.view(np.int32))
+    tiles = nbt.List[nbt.Compound]()
+    # Positions are given as (x, y, z) indices in the uncropped array.
+    for (x, y, z), data in sorted((block_entities or {}).items()):
+        px, py, pz = x - xmin, y - ymin, z - zmin
+        if not (0 <= px < dx and 0 <= py < dy and 0 <= pz < dz and blocks[py, pz, px] != AIR):
+            raise ValueError(f'Block entity at {(x, y, z)} is outside the populated blocks')
+        tag = nbt.Compound(data)
+        tag.update(vector(px, py, pz))
+        tiles.append(tag)
     region = nbt.Compound(
         Position=vector(0, 0, 0), Size=size, BlockStatePalette=palette,
         BlockStates=pack_states(lookup[blocks], max(2, (len(palette) - 1).bit_length())),
-        TileEntities=nbt.List[nbt.Compound](), Entities=nbt.List[nbt.Compound](),
+        TileEntities=tiles, Entities=nbt.List[nbt.Compound](),
         PendingBlockTicks=nbt.List[nbt.Compound](), PendingFluidTicks=nbt.List[nbt.Compound](),
     )
     root = nbt.File({
