@@ -247,7 +247,7 @@ def pressure(x: np.ndarray, y: np.ndarray, z: np.ndarray) -> np.ndarray:
     return value
 
 
-def encrust(g: DeepGrid) -> None:
+def encrust(g: DeepGrid, *, pure_sculk: bool = False) -> None:
     v = g.blocks
     yy, zz, xx = np.where(v)
     x, y, z = xx + X0, yy + Y0, zz + Z0
@@ -270,24 +270,31 @@ def encrust(g: DeepGrid) -> None:
     v[yy[crust], zz[crust], xx[crust]] = np.where(ripple[crust] < -.065, COBBLE, SCULK)
     glass = np.isin(ids, tuple(c.GLASS.values())) & (decay + ripple > .58)
     # The windows dim where the crust first appears; later the broken edge is overgrown.
-    v[yy[glass], zz[glass], xx[glass]] = np.where(decay[glass] + ripple[glass] > .85, DARK_TEAL, RESIN)
+    if pure_sculk:
+        crusted_glass = glass & (decay + ripple > .85)
+        v[yy[crusted_glass], zz[crusted_glass], xx[crusted_glass]] = SCULK
+    else:
+        v[yy[glass], zz[glass], xx[glass]] = np.where(decay[glass] + ripple[glass] > .85, DARK_TEAL, RESIN)
     for before, after in ((c.LANTERN, SOUL), (c.HANGING, SOUL_HANGING), (c.LIGHT, LUMEN)):
         cool = (ids == before) & (decay > .46)
         v[yy[cool], zz[cool], xx[cool]] = after
 
 
-def outgrowth(g: DeepGrid) -> None:
+def outgrowth(g: DeepGrid, *, pure_sculk: bool = False) -> None:
     petals = tuple(heart_petals())
     flesh = np.full(SHAPE, -2, dtype=np.float32)
-    filaments = flesh.copy()
+    filaments = None if pure_sculk else flesh.copy()
     for i, path in enumerate(ROOTS + petals):
         stroke(flesh, path, vertical=.80 if i in (1, 2, 3) else 1.)
-        if i in (0, 1, 2, 4, 5, 6, 7, 8, 9, 10) or i >= len(ROOTS):
+        if filaments is not None and (i in (0, 1, 2, 4, 5, 6, 7, 8, 9, 10) or i >= len(ROOTS)):
             # Thin offset veins follow exposed bends instead of filling the root with lights.
             sign = -1 if i % 3 == 2 or i >= len(ROOTS) else 1
             stripe = [(x + r * .74, y + .17 * r + .27 * math.sin(j * 2), z + sign * r * .48,
                        min(.94, .32 + r * .125)) for j, (x, y, z, r) in enumerate(path)]
             stroke(filaments, stripe)
+    if filaments is None:
+        g.blocks[flesh >= 0] = SCULK
+        return
     yy, zz, xx = np.where(flesh >= 0)
     x, y, z = xx + X0, yy + Y0, zz + Z0
     skin = flesh[yy, zz, xx] < 1.1
@@ -310,7 +317,7 @@ def outgrowth(g: DeepGrid) -> None:
         g.blocks[idx][caps] = np.where((np.broadcast_to(y, caps.shape)[caps] + round(cz)) % 4 == 0, BONE, CALCITE)
 
 
-def luminous_heart(g: DeepGrid) -> None:
+def luminous_heart(g: DeepGrid, *, pure_sculk: bool = False) -> None:
     # Three cracks in the tilted shell face the nave. Glass caps their sea-lantern cores.
     cx, cy, cz = 14, 14, 177
     idx, x, y, z = local(cx, cy, cz, 8, 8, 7)
@@ -323,6 +330,11 @@ def luminous_heart(g: DeepGrid) -> None:
     front = (r <= 1) & (w < -.9)
     v = g.blocks[idx]
     capsule = r <= 1
+    if pure_sculk:
+        v[capsule] = SCULK
+        # Recessed channels instead of glass or luminous blocks painted onto the tissue.
+        v[front & (r > .51) & (slit | veins)] = AIR
+        return
     v[capsule] = np.where(np.sin(u * 1.3 - yy * .64) > .15, DARK_TEAL, SCULK)[capsule]
     v[front & (slit | veins)] = LUMEN
     v[front & (r > .66) & slit] = LIT_RESIN
@@ -410,12 +422,17 @@ def clean_fixtures(g: DeepGrid) -> None:
     v[~joined] = AIR
 
 
-def build() -> np.ndarray:
+def build(*, pure_sculk: bool = False) -> np.ndarray:
     g = DeepGrid()
-    for part in (crypt, ruptures, ground, encrust, outgrowth, luminous_heart, rubble_and_colonies, clean_fixtures):
+    for part in (crypt, ruptures, ground):
         part(g)
+    for part in (encrust, outgrowth, luminous_heart):
+        part(g, pure_sculk=pure_sculk)
+    rubble_and_colonies(g)
+    clean_fixtures(g)
     multiface(g, 'sculk_vein', (c.STONE, c.BASE, c.CARVED, c.DARK, FRACTURE, COBBLE, BASALT, CRACKED_ROOF))
-    multiface(g, 'glow_lichen', (SCULK, COBBLE, DARK_TEAL))
+    if not pure_sculk:
+        multiface(g, 'glow_lichen', (SCULK, COBBLE, DARK_TEAL))
     return g.blocks
 
 
