@@ -941,7 +941,8 @@ def vector(x: int, y: int, z: int) -> nbt.Compound:
     return nbt.Compound(x=nbt.Int(x), y=nbt.Int(y), z=nbt.Int(z))
 
 
-def save(path: Path, blocks: np.ndarray, preview: Path | None = None, *, variant: str = 'original') -> None:
+def save(path: Path, blocks: np.ndarray, preview: Path | None = None, *, variant: str = 'original',
+         title: str | None = None, description: str | None = None) -> None:
     ys, zs, xs = np.nonzero(blocks)
     blocks = blocks[ys.min():ys.max() + 1, zs.min():zs.max() + 1, xs.min():xs.max() + 1]
     dy, dz, dx = blocks.shape
@@ -963,10 +964,12 @@ def save(path: Path, blocks: np.ndarray, preview: Path | None = None, *, variant
         palette.append(entry)
     size = vector(dx, dy, dz)
     count = len(xs)
-    title = f'{TITLE} — {colorway.label}' if colorway.label else TITLE
-    description = 'Готический собор с нефом, витражами и тремя шпилями. Minecraft Java 26.3.'
-    if colorway.description:
-        description += ' ' + colorway.description
+    if title is None:
+        title = f'{TITLE} — {colorway.label}' if colorway.label else TITLE
+    if description is None:
+        description = 'Готический собор с нефом, витражами и тремя шпилями. Minecraft Java 26.3.'
+        if colorway.description:
+            description += ' ' + colorway.description
     metadata = nbt.Compound(
         Name=nbt.String(title), Author=nbt.String('Arena'), Description=nbt.String(description),
         RegionCount=nbt.Int(1), TimeCreated=nbt.Long(1794960000000), TimeModified=nbt.Long(1794960000000),
