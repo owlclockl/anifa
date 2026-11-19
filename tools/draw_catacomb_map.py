@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from . import build_catacomb_cathedral as b
+from . import build_catacomb_cathedral as b, catacomb_funicular as f, catacomb_storage as store
 from .catacomb_routes import tread_tables
 
 
@@ -47,6 +47,10 @@ def draw_map(g: b.Catacombs, output: Path) -> None:
     pixels = np.full((*floor.shape, 3), wall, dtype=np.uint8)
     pixels[aisle] = hall
     pixels[aisle & (floor == b.COPPER)] = (105, 77, 56)
+    # Store is on the ring level, not projected from a higher landing.
+    sx = slice(-71 - LEFT, store.EAST - LEFT + 1)
+    sz = slice(store.NORTH_Z - TOP, store.SOUTH_Z - TOP + 1)
+    pixels[sz, sx][aisle[sz, sx]] = (97, 73, 54)
     canvas = Image.new('RGB', (WIDTH, HEIGHT), '#111820')
     canvas.paste(Image.fromarray(pixels).resize((pixels.shape[1]*SCALE, pixels.shape[0]*SCALE), Image.Resampling.NEAREST), (OX, OZ))
     d = ImageDraw.Draw(canvas)
@@ -71,9 +75,15 @@ def draw_map(g: b.Catacombs, output: Path) -> None:
         d.line([pt(*q) for q in route], fill=CYAN, width=3, joint='curve')
     for first, second in b.SPURS[1:]:
         d.line([pt(*first), pt(*second)], fill=COPPER, width=4)
+    x, _, z = store.RING_TURN
+    d.line((pt(x, z), pt(store.AISLE[0], z)), fill=COPPER, width=3)
     dashed(d, (-55, 166), (-31, 166), COPPER)
     dashed(d, (b.SERVICE_X, 115), (b.SERVICE_X, 79), COPPER)
     d.rectangle((*pt(b.HEART.x-7, b.HEART.z-8), *pt(b.HEART.x+7, b.HEART.z+8)), fill='#29484a', outline='#63afa6', width=2)
+    # The incline is projected onto the lower plan, like the two old stairs.
+    dashed(d, (f.TRACK_X, f.TOP_Z), (f.TRACK_X, f.BOTTOM_Z), '#c197d7')
+    x, z = pt(f.TRACK_X, f.TOP_Z)
+    d.polygon(((x, z-7), (x+7, z), (x, z+7), (x-7, z)), fill='#c197d7')
 
     places = (
         ((b.HUB.x, b.HUB.z), 'Распутье ключей', 'Мозаичный компас. Начало обхода.'),
@@ -83,24 +93,27 @@ def draw_map(g: b.Catacombs, output: Path) -> None:
         ((b.BELLS.x, b.BELLS.z), 'Семь колоколов', 'Костница в южном крыле.'),
         ((b.CRYPT_GATE[0], b.CRYPT_GATE[2]), 'Подъём в крипту', 'Из крипты — к хору и тронному залу.'),
         ((b.SERVICE_DOOR[0], b.SERVICE_DOOR[2]), 'Выход в жилой двор', 'К дому, мастерской и клуатру.'),
+        ((f.LOWER[0], f.LOWER[2]), 'Перевоз ключей', 'Фуникулёр и лестница в старую крипту.'),
+        ((store.AISLE[0], store.AISLE[2]), 'Кладовая хранителей', 'Ввод, распаковка и 20 автосборщиков.'),
     )
     for i, (pos, title, note) in enumerate(places, 1):
-        color = COPPER if i in (6, 7) else CYAN
+        color = '#c197d7' if i == 8 else COPPER if i in (6, 7, 9) else CYAN
         x, z = pt(*pos)
         d.ellipse((x-15, z-15, x+15, z+15), fill='#111820', outline=color, width=2)
         d.text((x, z), str(i), font=number, fill=color, anchor='mm')
-        py = 233 + (i - 1)*94
+        py = 209 + (i - 1)*74
         d.ellipse((911, py + 3, 943, py + 35), outline=color, width=2)
         d.text((927, py + 19), str(i), font=number, fill=color, anchor='mm')
         d.text((962, py), title, font=label, fill=INK)
         d.text((962, py+33), note, font=small, fill=SUBTEXT)
-        d.line((911, py+72, 1418, py+72), fill=LINE)
+        d.line((911, py+64, 1418, py+64), fill=LINE)
 
     for row, (color, text) in enumerate(((CYAN, 'Кольцо и ответвление в архив'),
                                         (COPPER, 'Медные метки к выходам'),
-                                        (COPPER, 'Пунктир — подъём этажом выше'))):
-        y = 920 + row*31
-        if row == 2:
+                                        (COPPER, 'Пунктир — старые выходы'),
+                                        ('#c197d7', 'Фуникулёр и отдельный пеший спуск'))):
+        y = 909 + row*31
+        if row >= 2:
             for x in (913, 924, 935):
                 d.line((x, y+9, x+7, y+9), fill=color, width=3)
         else:

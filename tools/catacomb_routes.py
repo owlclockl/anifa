@@ -29,7 +29,7 @@ def stair_edges(name: str, props: tuple) -> tuple[int, int, int, int]:
 def tread_tables() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     states = b.c.STATES
     carpet = np.array([name.endswith('_carpet') for name, _ in states], dtype=np.uint8)
-    through = carpet.astype(bool) | np.array([name in b.r.NONCOLLIDING or name.endswith(('_door', '_fence_gate'))
+    through = carpet.astype(bool) | np.array([name in b.r.NONCOLLIDING or name.endswith(('_door', '_fence_gate', '_rail', ':rail', '_button', ':lever'))
                                              for name, _ in states])
     standable = np.array([b.r.could_support_spawn(name, p) or name.endswith(('_stairs', '_slab', '_glass', ':glass'))
                           or name == 'minecraft:sea_lantern' for name, p in states])
@@ -39,6 +39,17 @@ def tread_tables() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 def paths(blocks: np.ndarray, start: tuple[int, int, int], targets: set[tuple[int, int, int]], *, strict: bool = True,
           limit_y: int = 84, first_y: int = b.Y0) -> set[tuple[int, int, int]]:
     """Return destinations reached. Positions name the floor block (X, Y, Z), not the feet cell."""
+    reached, _ = _search(blocks, start, targets, strict, first_y, limit_y)
+    return reached
+
+
+def reachable(blocks: np.ndarray, start: tuple[int, int, int]) -> np.ndarray:
+    """All reachable floor cells in the strict model, across the site's full XYZ extent."""
+    _, seen = _search(blocks, start, None, True, b.Y0, b.Y1)
+    return seen
+
+
+def _search(blocks, start, targets, strict, first_y, limit_y):
     through, standable, carpet = tread_tables()
     heights = [stair_edges(name, p) for name, p in b.c.STATES]
     low = blocks[first_y - b.Y0:limit_y - b.Y0 + 1]
@@ -51,16 +62,17 @@ def paths(blocks: np.ndarray, start: tuple[int, int, int], targets: set[tuple[in
         x, y, z = p
         return y - first_y, z - b.Z0, x - b.X0
 
-    todo = {index(p): p for p in targets}
+    todo = {index(p): p for p in targets} if targets is not None else None
     here = index(start)
+    reached = set()
     if not room[here]:
-        return set()
-    queue, reached = deque([here]), set()
+        return reached, seen
+    queue = deque([here])
     seen[here] = True
-    while queue and todo:
+    while queue and (todo is None or todo):
         y, z, x = queue.popleft()
         p = (y, z, x)
-        if p in todo:
+        if todo is not None and p in todo:
             reached.add(todo.pop(p))
         level = heights[low[p]]
         rug = int(rug_height[p]) if strict else 0
@@ -79,4 +91,4 @@ def paths(blocks: np.ndarray, start: tuple[int, int, int], targets: set[tuple[in
                         continue
                 seen[dest] = True
                 queue.append(dest)
-    return reached
+    return reached, seen
