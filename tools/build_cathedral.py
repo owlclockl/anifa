@@ -943,8 +943,9 @@ def vector(x: int, y: int, z: int) -> nbt.Compound:
 
 def save(path: Path, blocks: np.ndarray, preview: Path | None = None, *, variant: str = 'original',
          title: str | None = None, description: str | None = None,
-         block_entities: dict[tuple[int, int, int], nbt.Compound] | None = None) -> None:
-    """Write a cropped schematic. Block entity keys are input-array indices in (x, y, z) order."""
+         block_entities: dict[tuple[int, int, int], nbt.Compound] | None = None,
+         entities: tuple[nbt.Compound, ...] = ()) -> None:
+    """Write a cropped schematic; block entity keys and entity Pos use input-array XYZ."""
     ys, zs, xs = np.nonzero(blocks)
     xmin, ymin, zmin = int(xs.min()), int(ys.min()), int(zs.min())
     blocks = blocks[ymin:ys.max() + 1, zmin:zs.max() + 1, xmin:xs.max() + 1]
@@ -997,10 +998,22 @@ def save(path: Path, blocks: np.ndarray, preview: Path | None = None, *, variant
         tag = nbt.Compound(data)
         tag.update(vector(px, py, pz))
         tiles.append(tag)
+    def local_entity(data):
+        tag = nbt.Compound(data)
+        if len(tag['Pos']) != 3:
+            raise ValueError('Expected three entity coordinates')
+        pos = tuple(float(a) - b for a, b in zip(tag['Pos'], (xmin, ymin, zmin)))
+        if not all(0 <= p < n for p, n in zip(pos, (dx, dy, dz))):
+            raise ValueError(f'Entity is outside the populated schematic: {pos}')
+        tag['Pos'] = nbt.List[nbt.Double](pos)
+        if 'Passengers' in tag:
+            tag['Passengers'] = nbt.List[nbt.Compound](local_entity(v) for v in tag['Passengers'])
+        return tag
+
     region = nbt.Compound(
         Position=vector(0, 0, 0), Size=size, BlockStatePalette=palette,
         BlockStates=pack_states(lookup[blocks], max(2, (len(palette) - 1).bit_length())),
-        TileEntities=tiles, Entities=nbt.List[nbt.Compound](),
+        TileEntities=tiles, Entities=nbt.List[nbt.Compound](local_entity(v) for v in entities),
         PendingBlockTicks=nbt.List[nbt.Compound](), PendingFluidTicks=nbt.List[nbt.Compound](),
     )
     root = nbt.File({
