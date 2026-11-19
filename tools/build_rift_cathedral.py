@@ -447,6 +447,8 @@ def could_support_spawn(name: str, props: tuple) -> bool:
         '_glass', ':glass', '_carpet', '_lantern', ':lantern', '_chain', '_bars', '_sensor', '_shrieker',
         '_wall', '_fence', '_fence_gate', '_door', '_bed', ':water', ':chest', ':anvil', ':grindstone',
         ':stonecutter', ':enchanting_table', ':composter', ':bell', ':lectern', ':amethyst_cluster',
+        ':rail', '_rail', '_button', ':hopper', ':lever', ':redstone_wire', ':repeater', ':comparator',
+        ':redstone_wall_torch', ':redstone_torch',
     )):
         return False
     return True

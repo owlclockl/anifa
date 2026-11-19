@@ -12,12 +12,14 @@ import numpy as np
 from nbtlib import tag as nbt
 
 from . import build_throne_cathedral as t
+from . import catacomb_access as access, catacomb_funicular as funicular, catacomb_storage as storage
 from .catacomb_finishes import set_dressing
+from . import catacomb_logistics as logistics
 
 
 c, s, r, a = t.c, t.s, t.r, t.a
 TITLE = 'Аббатство Лунных Шпилей — Печать глубин'
-DESCRIPTION = 'Заражение из ванильного скалка, резные своды и кольцо катакомб с двумя выходами. Minecraft Java 26.3.'
+DESCRIPTION = 'Заражение из ванильного скалка, катакомбы, фуникулёр и единая приёмка с распаковщиком, водоводом и автосборкой. Minecraft Java 26.3.'
 OUTPUT = c.OUTPUT.with_stem('moonspire-cathedral-catacombs')
 X0, X1, Y0, Y1, Z0, Z1 = a.X0, a.X1, -43, a.Y1, a.Z0, a.Z1
 LOW = -35  # Y of the blocks below players' feet on the catacomb ring
@@ -77,6 +79,7 @@ class Catacombs(s.DeepGrid):
         self.blocks = np.zeros((Y1 - Y0 + 1, Z1 - Z0 + 1, X1 - X0 + 1), dtype=np.int16)
         self.box(*a.Abbey.limits)[:] = t.assemble(pure_sculk=True).blocks
         self.signs: dict[tuple[int, int, int], nbt.Compound] = {}
+        self.logistics_tiles: dict[tuple[int, int, int], nbt.Compound] = {}
 
 
 def lamp(level: int) -> int:
@@ -791,6 +794,9 @@ def fill_shadows(g: Catacombs) -> None:
 def data_for(g: Catacombs) -> dict[tuple[int, int, int], nbt.Compound]:
     positions = t.furnishing_data(g.blocks)
     positions.update(g.signs)
+    for p, data in (funicular.inventory_data() | storage.inventory_data() | g.logistics_tiles).items():
+        iy, iz, ix = g.coord(*p)
+        positions[ix, iy, iz] = data
     y, z, x = g.coord(*RELIQUARY)
     positions[x, y, z]['Items'] = nbt.List[nbt.Compound](
         nbt.Compound(Slot=nbt.Byte(slot), id=nbt.String('minecraft:' + name), count=nbt.Int(count))
@@ -810,6 +816,10 @@ def build_site() -> Catacombs:
     set_dressing(g)
     detail_masonry(g)
     sculk_colonies(g)
+    access.build(g, plaque)
+    funicular.build(g, plaque)
+    storage.build(g, plaque)
+    g.logistics_tiles = logistics.build(g, plaque)
     r.remove_stray_voxels(g)
     soften_floors(g)
     low_surface_protection(g)
