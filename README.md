@@ -1,5 +1,11 @@
 # Собор Лунных Шпилей
 
+## Лунный арифмометр — редстоун-калькулятор
+
+[Скачать `.litematic`](moonspire-calculator.litematic) · [Как загораются цифры и шкала (GIF)](moonspire-calculator.gif) · [Крупный план пульта](moonspire-calculator-preview.jpg) · [Установка и управление](docs/calculator.md)
+
+Восемь операций в **Minecraft Java 26.3**: `+`, `−`, `×`, `÷`, `%`, `AND`, `OR`, `XOR`. Два числа от 0 до 255 вводятся рычагами. Полная **шкала из десяти делений** означает, что ответ на **пятизначном десятичном табло** уже стабилен. Есть минус и отдельный индикатор ошибки. Шкала сбрасывается при изменении любого рычага. Размер схемы — **267 × 155 × 273** (X × Y × Z). Для работы должны тикать все её чанки. Командных блоков нет.
+
 ## Новый компактный автосклад по категориям
 
 [Скачать `.litematic`](moonspire-universal-store.litematic) · [Общий 3D-вид](moonspire-universal-store-3d.jpg) · [3D-облёт (GIF)](moonspire-universal-store-tour.gif) · [План секций](moonspire-universal-store-map.png) · [Запуск и замеры](docs/universal-store.md) · [Каталог предметов](tools/data/java-26.3-warehouse.json)
