@@ -82,6 +82,8 @@ def xyz(p) -> str:
 
 
 class Server:
+    java_options = ('-Xms256M', '-Xmx1200M')
+
     def __init__(self, java, jar, directory, rate=100):
         self.java, self.jar, self.directory = java, jar, directory
         self.process = None
@@ -89,7 +91,7 @@ class Server:
 
     def start(self):
         self.lines = queue.Queue()
-        self.process = subprocess.Popen([self.java, '-Xms256M', '-Xmx1200M', '-jar', str(self.jar), 'nogui'],
+        self.process = subprocess.Popen([self.java, *self.java_options, '-jar', str(self.jar), 'nogui'],
                                         cwd=self.directory, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                         stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
         self.reader = threading.Thread(target=self.read, args=(self.process.stdout, self.lines), daemon=True)

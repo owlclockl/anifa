@@ -202,7 +202,7 @@ class Models:
                     if name == 'redstone_wire' and tex.endswith('_overlay'):
                         geom += unit_cross(geom)*.0002
                     faces.append(Face(geom, uv, tex, cull, adjust,
-                                      name == 'ochre_froglight' or tex == 'block/redstone_torch',
+                                      name == 'ochre_froglight' or tex in {'block/redstone_torch', 'block/redstone_lamp_on'},
                                       element.get('shade_direction_override') == 'up'))
         if not faces:
             raise ValueError(f'No renderable geometry for {name}: {properties}')
@@ -334,7 +334,8 @@ class Camera:
 
 
 SOLIDS = {'deepslate_tiles', 'deepslate_bricks', 'chiseled_tuff_bricks', 'ochre_froglight',
-          'blue_ice', 'dispenser', 'redstone_lamp', 'crafter', 'barrel'}
+          'blue_ice', 'dispenser', 'redstone_lamp', 'crafter', 'barrel', 'waxed_cut_copper',
+          'waxed_exposed_cut_copper', 'waxed_weathered_cut_copper', 'waxed_oxidized_cut_copper'}
 
 
 class Scene:
