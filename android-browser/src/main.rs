@@ -42,6 +42,12 @@ enum Surface {
     History,
 }
 
+impl Default for Surface {
+    fn default() -> Self {
+        Self::Start
+    }
+}
+
 #[derive(Clone, Debug)]
 struct Settings {
     theme: u8,
