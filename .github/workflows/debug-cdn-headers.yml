@@ -20,9 +20,10 @@ jobs:
         run: |
           {
             for url in \
-              'https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/manifest-install.json' \
-              'https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html' \
-              'https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/icon.svg'; do
+              'https://raw.githack.com/owlclockl/anifa/owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html' \
+              'https://rawcdn.githack.com/owlclockl/anifa/owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html' \
+              'https://gitcdn.xyz/repo/owlclockl/anifa/owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html' \
+              'https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html?raw=1'; do
               echo "=== $url"
               curl -sS -I -L "$url" | grep -iE '^(HTTP/|content-type|content-disposition|x-content-type-options|access-control-allow-origin|cross-origin-resource-policy|content-security-policy|location)' || true
             done
