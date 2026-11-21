@@ -45,7 +45,7 @@ npm run build
 Готовый манифест привязан к релизу `owlbear-round-counter-v1.0.0`:
 
 ```
-https://raw.githubusercontent.com/owlclockl/anifa/owlbear-round-counter-v1.0.0/owlbear-round-counter/dist/manifest-install.json
+https://raw.githubusercontent.com/owlclockl/anifa/owlbear-round-counter-v1.0.0/owlbear-round-counter/dist/manifest-install.json?v=2
 ```
 
 В Owlbear Rodeo: Profile → Add Extension → вставьте эту ссылку. Затем включите

@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const TAG = process.env.OBR_RELEASE_TAG || "owlbear-round-counter-v1.0.0";
+const CACHE_BUST = process.env.OBR_CACHE_BUST || "2";
 const RAW_BASE = `https://raw.githubusercontent.com/owlclockl/anifa/${TAG}/owlbear-round-counter/dist`;
 
 const dist = resolve("dist");
@@ -42,8 +43,8 @@ const manifest = {
   homepage_url: "https://github.com/owlclockl/anifa/tree/main/owlbear-round-counter",
   action: {
     title: "Round Counter",
-    icon: `${RAW_BASE}/icon.svg`,
-    popover: `${RAW_BASE}/extension.html`,
+    icon: `${RAW_BASE}/icon.svg?v=${CACHE_BUST}`,
+    popover: `${RAW_BASE}/extension.html?v=${CACHE_BUST}`,
     width: 320,
     height: 420,
   },
