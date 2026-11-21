@@ -49,6 +49,10 @@ https://github.com/owlclockl/anifa/releases/tag/slate-browser-latest
 Прямая ссылка на файл:
 https://github.com/owlclockl/anifa/releases/download/slate-browser-latest/slate-browser.apk
 
-SHA-256: `5cf6809e759e55cb40429831b5aa1d654ee4fbcdb61d0caa5d80c402d758e077`
+SHA-256: `b3e8ffe42c67533c8a1e0d53d4f700c70387bd0d9476a64bde35786c57a41a8d`
 
 Сборка делается workflow GitHub Actions; каждый успешный запуск обновляет этот релиз.
+
+Перед публикацией CI проверяет APK: целостность ZIP, подпись apksigner (v2 и v3),
+пакет, версию, minSdk/targetSdk и ABI. Публикуется только выровненный и подписанный
+файл — промежуточный `.unaligned.apk` в релиз не попадает.
