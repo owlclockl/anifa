@@ -40,3 +40,10 @@ APK появится в `android-browser/target/makepad-android-apk/`. В реп
 в интерфейсе: кнопка шестерёнки в нижней части правого рельса.
 
 Пакет: `com.owlclockl.slate.browser`, приложение: `Slate Browser`.
+
+## Готовая сборка
+
+Успешная сборка ARM64 (minSdk 26):
+https://github.com/owlclockl/anifa/actions/runs/44936841794
+
+APK лежит в артефакте `slate-browser-apk` этого запуска.
