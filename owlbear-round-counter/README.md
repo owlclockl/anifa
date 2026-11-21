@@ -42,18 +42,19 @@ npm run build
 
 ## Установка в Owlbear Rodeo
 
-Готовый манифест привязан к релизу `owlbear-round-counter-v1.0.2`:
+Готовый манифест привязан к релизу `owlbear-round-counter-v1.0.3`:
 
 ```
-https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/manifest-install.json
+https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.3/owlbear-round-counter/dist/manifest-install.json
 ```
 
 В Owlbear Rodeo: Profile → Add Extension → вставьте эту ссылку. Затем включите
 extension в комнате — кнопка `Round Counter` появится слева вверху.
 
-Popover в релизе собран одним файлом (`dist/extension.html` со встроенными JS
-и CSS), поэтому CDN-ссылки работают без дополнительного хостинга. Полный архив
-со статикой лежит в [релизе](https://github.com/owlclockl/anifa/releases/tag/owlbear-round-counter-v1.0.2).
+Popover в релизе собран одним файлом (`dist/extension.xhtml` со встроенными JS
+и CSS). Формат XHTML нужен, потому что jsDelivr отдаёт `.html` как `text/plain`
+и браузер показал бы исходник вместо интерфейса. Полный архив
+со статикой лежит в [релизе](https://github.com/owlclockl/anifa/releases/tag/owlbear-round-counter-v1.0.3).
 
 ## Технические детали
 

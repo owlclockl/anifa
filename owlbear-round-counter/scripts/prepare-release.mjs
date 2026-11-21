@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const TAG = process.env.OBR_RELEASE_TAG || "owlbear-round-counter-v1.0.2";
+const TAG = process.env.OBR_RELEASE_TAG || "owlbear-round-counter-v1.0.3";
 const RAW_BASE = `https://raw.githubusercontent.com/owlclockl/anifa/${TAG}/owlbear-round-counter/dist`;
 const INSTALL_BASE = process.env.OBR_INSTALL_BASE || RAW_BASE;
 
@@ -34,9 +34,20 @@ html = html
 
 writeFileSync(resolve(dist, "extension.html"), html);
 
+const xhtml = html
+  .replace(/^<!doctype html>/i, '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE html>')
+  .replace('<html lang="en">', '<html lang="en" xmlns="http://www.w3.org/1999/xhtml">')
+  .replace(/<style>\n([\s\S]*?)\n<\/style>/, (_m, cssText) => `<style><![CDATA[\n${cssText}\n]]></style>`)
+  .replace(
+    /<script type="module">\n([\s\S]*?)\n<\/script>/,
+    (_m, jsText) => `<script type="module"><![CDATA[\n${jsText}\n]]></script>`,
+  );
+
+writeFileSync(resolve(dist, "extension.xhtml"), xhtml);
+
 const manifest = {
   name: "Round Counter",
-  version: "1.0.2",
+  version: "1.0.3",
   manifest_version: 1,
   description: "Shared round counter for Owlbear Rodeo scenes",
   author: "owlclockl",
@@ -44,7 +55,7 @@ const manifest = {
   action: {
     title: "Round Counter",
     icon: `${INSTALL_BASE}/icon.svg`,
-    popover: `${INSTALL_BASE}/extension.html`,
+    popover: `${INSTALL_BASE}/extension.xhtml`,
     width: 320,
     height: 420,
   },

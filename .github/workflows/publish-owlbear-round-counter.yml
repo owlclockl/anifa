@@ -54,4 +54,5 @@ jobs:
             owlbear-round-counter/owlbear-round-counter-${{ github.ref_name }}.zip
             owlbear-round-counter/dist/manifest-install.json
             owlbear-round-counter/dist/extension.html
+            owlbear-round-counter/dist/extension.xhtml
             owlbear-round-counter/dist/icon.svg
