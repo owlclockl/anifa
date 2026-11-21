@@ -26,6 +26,8 @@ const syncEl = byId<HTMLElement>("sync");
 let state: CounterState = { round: MIN_ROUND, updatedBy: "", updatedAt: 0 };
 let canEdit = false;
 
+syncEl.textContent = "Connecting to Owlbear…";
+
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
   if (!element) {
@@ -133,6 +135,7 @@ function bindEvents() {
 }
 
 OBR.onReady(async () => {
+  syncEl.textContent = "Loading scene…";
   const [metadata, role, theme] = await Promise.all([
     OBR.scene.getMetadata(),
     OBR.player.getRole(),

@@ -1,6 +1,6 @@
 {
   "name": "owlbear-round-counter",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "type": "module",
   "description": "Owlbear Rodeo extension that keeps a shared round counter per scene",

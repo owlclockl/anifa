@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const TAG = process.env.OBR_RELEASE_TAG || "owlbear-round-counter-v1.0.3";
+const TAG = process.env.OBR_RELEASE_TAG || "owlbear-round-counter-v1.0.4";
 const RAW_BASE = `https://raw.githubusercontent.com/owlclockl/anifa/${TAG}/owlbear-round-counter/dist`;
 const INSTALL_BASE = process.env.OBR_INSTALL_BASE || RAW_BASE;
 
@@ -26,6 +26,19 @@ js = js.replace(/import\s*["'][^"']+["'];?/g, "");
 // A literal closing script tag inside the bundle would end the inline block.
 js = js.replace(/<\/script/gi, "<\\/script");
 
+// Owlbear may send OBR_READY from an origin the bundled SDK does not expect
+// (for example when the obrref query parameter is stripped). Accept the
+// handshake from an Owlbear origin and adopt that origin for later calls.
+js = js
+  .replace(
+    /if\(s\.origin===this\.targetOrigin&&([A-Za-z_$][\w$]*)\(o\)\)/,
+    'if((s.origin===this.targetOrigin||o.id==="OBR_READY"&&s.origin.includes("owlbear"))&&$1(o))',
+  )
+  .replace(
+    'if(o.id==="OBR_READY"){this.ready=!0;',
+    'if(o.id==="OBR_READY"){this.targetOrigin=s.origin;this.ready=!0;',
+  );
+
 html = html
   .replace(scriptMatch[0], "")
   .replace(styleMatch[0], "")
@@ -47,7 +60,7 @@ writeFileSync(resolve(dist, "extension.xhtml"), xhtml);
 
 const manifest = {
   name: "Round Counter",
-  version: "1.0.3",
+  version: "1.0.4",
   manifest_version: 1,
   description: "Shared round counter for Owlbear Rodeo scenes",
   author: "owlclockl",
