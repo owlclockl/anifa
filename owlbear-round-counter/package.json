@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "check": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:release": "npm run build && node scripts/prepare-release.mjs"
   },
   "dependencies": {
     "@owlbear-rodeo/sdk": "^3.1.0"

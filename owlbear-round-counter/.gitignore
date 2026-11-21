@@ -1,4 +1,9 @@
 node_modules/
-dist/
 .vite/
 *.log
+
+# Keep only the self-contained install files; hashed build assets stay local.
+dist/*
+!dist/extension.html
+!dist/icon.svg
+!dist/manifest-install.json

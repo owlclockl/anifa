@@ -40,17 +40,20 @@ npm run build
 
 Готовая статика окажется в `dist/`.
 
-## Публикация
+## Установка в Owlbear Rodeo
 
-Для постоянной установки нужно разместить `dist/` на HTTPS и дать Owlbear
-URL вида:
+Готовый манифест привязан к релизу `owlbear-round-counter-v1.0.0`:
 
 ```
-https://<host>/<path>/manifest.json
+https://raw.githubusercontent.com/owlclockl/anifa/owlbear-round-counter-v1.0.0/owlbear-round-counter/dist/manifest-install.json
 ```
 
-Если расширение лежит не в корне домена, замените в `public/manifest.json`
-относительные пути на абсолютные URL до `icon.svg` и `extension.html`.
+В Owlbear Rodeo: Profile → Add Extension → вставьте эту ссылку. Затем включите
+extension в комнате — кнопка `Round Counter` появится слева вверху.
+
+Popover в релизе собран одним файлом (`dist/extension.html` со встроенными JS
+и CSS), поэтому raw-ссылки работают без дополнительного хостинга. Полный архив
+со статикой лежит в [релизе](https://github.com/owlclockl/anifa/releases/tag/owlbear-round-counter-v1.0.0).
 
 ## Технические детали
 

@@ -1,0 +1,15 @@
+{
+  "name": "Round Counter",
+  "version": "1.0.0",
+  "manifest_version": 1,
+  "description": "Shared round counter for Owlbear Rodeo scenes",
+  "author": "owlclockl",
+  "homepage_url": "https://github.com/owlclockl/anifa/tree/main/owlbear-round-counter",
+  "action": {
+    "title": "Round Counter",
+    "icon": "https://raw.githubusercontent.com/owlclockl/anifa/owlbear-round-counter-v1.0.0/owlbear-round-counter/dist/icon.svg",
+    "popover": "https://raw.githubusercontent.com/owlclockl/anifa/owlbear-round-counter-v1.0.0/owlbear-round-counter/dist/extension.html",
+    "width": 320,
+    "height": 420
+  }
+}
