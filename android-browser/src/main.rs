@@ -1,5 +1,8 @@
 //! Slate Browser — a Rust browser with a full-height site rail.
 //!
+//! The shell uses a graphite palette, a single active surface, compact
+//! controls and subtle 180 ms ease-out tab transitions.
+//!
 //! Every surface is drawn by Makepad in Rust. Pages are rendered by the
 //! platform WebView through Makepad's native layer, so Android Chromium does
 //! the page work while the chrome stays 100% Rust.
