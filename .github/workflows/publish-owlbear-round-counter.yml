@@ -31,6 +31,7 @@ jobs:
         working-directory: owlbear-round-counter
         env:
           OBR_RELEASE_TAG: ${{ github.ref_name }}
+          OBR_INSTALL_BASE: https://cdn.jsdelivr.net/gh/owlclockl/anifa@${{ github.ref_name }}/owlbear-round-counter/dist
         run: npm run build:release
 
       - name: Archive static extension
@@ -46,7 +47,7 @@ jobs:
 
             Profile → Add Extension → paste this URL:
 
-            https://raw.githubusercontent.com/owlclockl/anifa/${{ github.ref_name }}/owlbear-round-counter/dist/manifest-install.json?v=2
+            https://cdn.jsdelivr.net/gh/owlclockl/anifa@${{ github.ref_name }}/owlbear-round-counter/dist/manifest-install.json
 
             Then enable the extension in a room. The popover is self-contained; the ZIP contains the full static build.
           files: |

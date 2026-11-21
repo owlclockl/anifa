@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const TAG = process.env.OBR_RELEASE_TAG || "owlbear-round-counter-v1.0.1";
+const TAG = process.env.OBR_RELEASE_TAG || "owlbear-round-counter-v1.0.2";
 const RAW_BASE = `https://raw.githubusercontent.com/owlclockl/anifa/${TAG}/owlbear-round-counter/dist`;
+const INSTALL_BASE = process.env.OBR_INSTALL_BASE || RAW_BASE;
 
 const dist = resolve("dist");
 let html = readFileSync(resolve(dist, "extension.html"), "utf8");
@@ -35,15 +36,15 @@ writeFileSync(resolve(dist, "extension.html"), html);
 
 const manifest = {
   name: "Round Counter",
-  version: "1.0.1",
+  version: "1.0.2",
   manifest_version: 1,
   description: "Shared round counter for Owlbear Rodeo scenes",
   author: "owlclockl",
   homepage_url: "https://github.com/owlclockl/anifa/tree/main/owlbear-round-counter",
   action: {
     title: "Round Counter",
-    icon: `${RAW_BASE}/icon.svg`,
-    popover: `${RAW_BASE}/extension.html`,
+    icon: `${INSTALL_BASE}/icon.svg`,
+    popover: `${INSTALL_BASE}/extension.html`,
     width: 320,
     height: 420,
   },
