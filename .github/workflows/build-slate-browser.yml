@@ -67,12 +67,20 @@ jobs:
           cargo makepad android --abi=aarch64 build -p slate-browser --release 2>&1 | tee /tmp/slate-build.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
-            tail -n 50 /tmp/slate-build.log | while IFS= read -r line; do
+            tail -n 200 /tmp/slate-build.log | while IFS= read -r line; do
               echo "::error::apk build: $line"
             done
             echo "::error::apk build: full log lines: $(wc -l < /tmp/slate-build.log)"
             exit "$status"
           fi
+
+      - name: Upload the build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slate-build-log
+          path: /tmp/slate-build.log
+          if-no-files-found: ignore
 
       - name: Upload the APK
         uses: actions/upload-artifact@v4
