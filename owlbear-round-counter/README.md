@@ -52,7 +52,7 @@ https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear
 extension в комнате — кнопка `Round Counter` появится слева вверху.
 
 Popover в релизе собран одним файлом (`dist/extension.html` со встроенными JS
-и CSS), поэтому raw-ссылки работают без дополнительного хостинга. Полный архив
+и CSS), поэтому CDN-ссылки работают без дополнительного хостинга. Полный архив
 со статикой лежит в [релизе](https://github.com/owlclockl/anifa/releases/tag/owlbear-round-counter-v1.0.2).
 
 ## Технические детали
