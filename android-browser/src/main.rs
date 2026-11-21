@@ -116,7 +116,9 @@ impl Settings {
             out.push_str(&format!("hist={url}\n"));
         }
         for (i, site) in self.sites.iter().enumerate() {
-            out.push_str(&format!("site={i}|{}|{}\n", site.label, site.url));
+            if site.custom {
+                out.push_str(&format!("site={i}|{}|{}\n", site.label, site.url));
+            }
         }
         out
     }
