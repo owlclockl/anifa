@@ -1,0 +1,18 @@
+=== https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/manifest-install.json
+HTTP/2 200 
+access-control-allow-origin: *
+cross-origin-resource-policy: cross-origin
+x-content-type-options: nosniff
+content-type: application/json; charset=utf-8
+=== https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html
+HTTP/2 200 
+access-control-allow-origin: *
+cross-origin-resource-policy: cross-origin
+x-content-type-options: nosniff
+content-type: text/plain; charset=utf-8
+=== https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/icon.svg
+HTTP/2 200 
+access-control-allow-origin: *
+cross-origin-resource-policy: cross-origin
+x-content-type-options: nosniff
+content-type: image/svg+xml
