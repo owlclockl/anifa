@@ -15,13 +15,13 @@ use makepad_widgets::*;
 
 app_main!(App);
 
-const SITES: [(&str, &str, &str); 6] = [
-    ("W", "Wikipedia", "https://en.wikipedia.org"),
-    ("H", "Hacker News", "https://news.ycombinator.com"),
-    ("G", "GitHub", "https://github.com"),
-    ("D", "DuckDuckGo", "https://duckduckgo.com"),
-    ("Y", "YouTube", "https://www.youtube.com"),
-    ("A", "Internet Archive", "https://archive.org"),
+const SITES: [(&str, &str); 6] = [
+    ("Wikipedia", "https://en.wikipedia.org"),
+    ("Hacker News", "https://news.ycombinator.com"),
+    ("GitHub", "https://github.com"),
+    ("DuckDuckGo", "https://duckduckgo.com"),
+    ("YouTube", "https://www.youtube.com"),
+    ("Internet Archive", "https://archive.org"),
 ];
 
 const ENGINES: [(&str, &str); 3] = [
@@ -40,11 +40,29 @@ enum Surface {
     Page,
     Settings,
     History,
+    Sites,
 }
 
 impl Default for Surface {
     fn default() -> Self {
         Self::Start
+    }
+}
+
+#[derive(Clone, Debug)]
+struct Site {
+    label: String,
+    url: String,
+    custom: bool,
+}
+
+impl Site {
+    fn default_site(index: usize) -> Self {
+        Self {
+            label: SITES[index].0.to_string(),
+            url: SITES[index].1.to_string(),
+            custom: false,
+        }
     }
 }
 
@@ -55,9 +73,11 @@ struct Settings {
     rail: u8,
     labels: bool,
     engine: u8,
+    reduced_motion: bool,
     tabs: [String; 3],
     active: usize,
     history: Vec<String>,
+    sites: Vec<Site>,
 }
 
 impl Default for Settings {
@@ -68,21 +88,24 @@ impl Default for Settings {
             rail: 0,
             labels: false,
             engine: 0,
+            reduced_motion: false,
             tabs: [String::new(), String::new(), String::new()],
             active: 0,
             history: Vec::new(),
+            sites: (0..SITES.len()).map(Site::default_site).collect(),
         }
     }
 }
 
 impl Settings {
     fn encode(&self) -> String {
-        let mut out = String::from("slate-v1\n");
+        let mut out = String::from("slate-v2\n");
         out.push_str(&format!("theme={}\n", self.theme));
         out.push_str(&format!("accent={}\n", self.accent));
         out.push_str(&format!("rail={}\n", self.rail));
         out.push_str(&format!("labels={}\n", u8::from(self.labels)));
         out.push_str(&format!("engine={}\n", self.engine));
+        out.push_str(&format!("reduced={}\n", u8::from(self.reduced_motion)));
         out.push_str(&format!("active={}\n", self.active));
         for (i, tab) in self.tabs.iter().enumerate() {
             if !tab.is_empty() {
@@ -92,15 +115,20 @@ impl Settings {
         for url in self.history.iter().take(24) {
             out.push_str(&format!("hist={url}\n"));
         }
+        for (i, site) in self.sites.iter().enumerate() {
+            out.push_str(&format!("site={i}|{}|{}\n", site.label, site.url));
+        }
         out
     }
 
     fn decode(text: &str) -> Option<Self> {
-        if !text.starts_with("slate-v1") {
+        let mut lines = text.lines();
+        let version = lines.next()?;
+        if version != "slate-v1" && version != "slate-v2" {
             return None;
         }
         let mut s = Self::default();
-        for line in text.lines().skip(1) {
+        for line in lines {
             if let Some(value) = line.strip_prefix("theme=") {
                 s.theme = value.parse().unwrap_or(0).min(2);
             } else if let Some(value) = line.strip_prefix("accent=") {
@@ -111,6 +139,8 @@ impl Settings {
                 s.labels = value == "1";
             } else if let Some(value) = line.strip_prefix("engine=") {
                 s.engine = value.parse().unwrap_or(0).min(2);
+            } else if let Some(value) = line.strip_prefix("reduced=") {
+                s.reduced_motion = value == "1";
             } else if let Some(value) = line.strip_prefix("active=") {
                 s.active = value.parse().unwrap_or(0).min(2);
             } else if let Some(value) = line.strip_prefix("tab=") {
@@ -121,10 +151,58 @@ impl Settings {
                 }
             } else if let Some(url) = line.strip_prefix("hist=") {
                 s.history.push(url.to_string());
+            } else if let Some(value) = line.strip_prefix("site=") {
+                let mut parts = value.splitn(3, '|');
+                let index: usize = parts.next()?.parse().ok()?;
+                let label = parts.next()?.to_string();
+                let url = parts.next()?.to_string();
+                if let Some(slot) = s.sites.get_mut(index) {
+                    *slot = Site {
+                        label,
+                        url,
+                        custom: true,
+                    };
+                }
             }
         }
         Some(s)
     }
+}
+
+fn host_of(url: &str) -> String {
+    let after_scheme = url.split("://").nth(1).unwrap_or(url);
+    let host = after_scheme.split('/').next().unwrap_or(after_scheme);
+    host.split('@').last().unwrap_or(host).to_string()
+}
+
+fn short_host(url: &str, limit: usize) -> String {
+    let host = host_of(url);
+    let trimmed = host.trim_start_matches("www.");
+    let parts: Vec<&str> = trimmed.split('.').filter(|p| !p.is_empty()).collect();
+    let picked = if parts.len() > 1 && parts[0].len() <= 3 && parts[0] != "news" {
+        parts[1]
+    } else {
+        parts.first().copied().unwrap_or("site")
+    };
+    let mut out: String = picked.chars().take(limit).collect();
+    if let Some(first) = out.get_mut(0..1) {
+        first.make_ascii_uppercase();
+    }
+    if out.is_empty() {
+        out.push_str("Site");
+    }
+    out
+}
+
+fn site_label_from_url(url: &str) -> String {
+    short_host(url, 12)
+}
+
+fn tab_label(url: &str, index: usize) -> String {
+    if url.is_empty() {
+        return format!("{}", index + 1);
+    }
+    short_host(url, 7)
 }
 
 fn percent_encode(input: &str) -> String {
@@ -324,6 +402,13 @@ script_mod! {
                                     icon_walk: Walk{width: 18 height: Fit}
                                 }
                             }
+
+                            load_bar := View{
+                                visible: false
+                                width: Fill height: 2
+                                show_bg: true
+                                draw_bg.color: theme.color_focus
+                            }
                         }
 
                         stage := View{
@@ -478,6 +563,18 @@ script_mod! {
                                     align: Align{x: 0.0 y: 0.5}
                                     draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 12}}
                                 }
+                                motion_row := ButtonFlatter{
+                                    width: Fill height: 48 margin: 0
+                                    text: "Motion"
+                                    align: Align{x: 0.0 y: 0.5}
+                                    draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 12}}
+                                }
+                                sites_row := ButtonFlatter{
+                                    width: Fill height: 48 margin: 0
+                                    text: "Edit site rail"
+                                    align: Align{x: 0.0 y: 0.5}
+                                    draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 12}}
+                                }
                                 settings_note := Label{
                                     width: Fill height: 48
                                     text: "Tap a row to change it. Your choices are saved on this device."
@@ -503,6 +600,11 @@ script_mod! {
                                         text: "History"
                                         draw_text +: {color: theme.color_text text_style: theme.font_bold{font_size: 16}}
                                     }
+                                    history_clear := ButtonFlatter{
+                                        width: 64 height: 36 margin: 0
+                                        text: "Clear"
+                                        draw_text +: {color: theme.color_text_meta text_style: theme.font_regular{font_size: 11}}
+                                    }
                                     history_close := ButtonFlatterIcon{
                                         width: 36 height: 36
                                         margin: 0
@@ -522,6 +624,69 @@ script_mod! {
                                 hist4 := ButtonFlatter{width: Fill height: 44 margin: 0 text: "—" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 12}}}
                                 hist5 := ButtonFlatter{width: Fill height: 44 margin: 0 text: "—" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 12}}}
                                 hist6 := ButtonFlatter{width: Fill height: 44 margin: 0 text: "—" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 12}}}
+                            }
+
+                            sites_panel := View{
+                                visible: false
+                                width: Fill height: Fill
+                                flow: Down
+                                spacing: 0
+                                padding: Inset{left: 24 right: 24 top: 24 bottom: 24}
+                                show_bg: true
+                                draw_bg.color: theme.color_bg_app
+
+                                sites_header := View{
+                                    width: Fill height: 44
+                                    flow: Right spacing: 8
+                                    align: Align{x: 0.0 y: 0.5}
+                                    sites_title := Label{
+                                        width: Fill height: 44
+                                        text: "Site rail"
+                                        draw_text +: {color: theme.color_text text_style: theme.font_bold{font_size: 16}}
+                                    }
+                                    sites_close := ButtonFlatterIcon{
+                                        width: 36 height: 36
+                                        margin: 0
+                                        draw_icon.svg: crate_resource("self:resources/icons/close.svg")
+                                        draw_icon.color: theme.color_text_meta
+                                        icon_walk: Walk{width: 16 height: Fit}
+                                    }
+                                }
+                                sites_note := Label{
+                                    width: Fill height: 32
+                                    text: "Choose a tile, enter an address, then Save."
+                                    draw_text +: {color: theme.color_text_meta text_style: theme.font_regular{font_size: 10}}
+                                }
+                                site_row1 := ButtonFlatter{width: Fill height: 34 margin: 0 text: "1 · Wikipedia" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                site_row2 := ButtonFlatter{width: Fill height: 34 margin: 0 text: "2 · Hacker News" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                site_row3 := ButtonFlatter{width: Fill height: 34 margin: 0 text: "3 · GitHub" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                site_row4 := ButtonFlatter{width: Fill height: 34 margin: 0 text: "4 · DuckDuckGo" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                site_row5 := ButtonFlatter{width: Fill height: 34 margin: 0 text: "5 · YouTube" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                site_row6 := ButtonFlatter{width: Fill height: 34 margin: 0 text: "6 · Internet Archive" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                site_input := TextInput{
+                                    width: Fill height: 44
+                                    margin: Inset{top: 12 left: 0 right: 0 bottom: 0}
+                                    empty_text: "https://example.com"
+                                    draw_bg +: {
+                                        color: theme.color_inset
+                                        color_focus: theme.color_inset
+                                        border_size: 0
+                                        border_radius: 8
+                                    }
+                                    draw_text +: {
+                                        color: theme.color_text
+                                        color_empty: theme.color_text_meta
+                                        text_style: theme.font_regular{font_size: 12}
+                                    }
+                                }
+                                site_actions := View{
+                                    width: Fill height: 44
+                                    flow: Right spacing: 8
+                                    align: Align{x: 0.0 y: 0.5}
+                                    site_save := ButtonFlatter{width: 96 height: 36 margin: 0 text: "Save" draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                    site_default := ButtonFlatter{width: 96 height: 36 margin: 0 text: "Reset tile" draw_text +: {color: theme.color_text_meta text_style: theme.font_regular{font_size: 11}}}
+                                    site_all_default := ButtonFlatter{width: Fill height: 36 margin: 0 text: "Reset all" draw_text +: {color: theme.color_text_meta text_style: theme.font_regular{font_size: 11}}}
+                                }
                             }
                         }
                     }
@@ -624,6 +789,8 @@ pub struct App {
     #[rust]
     surface: Surface,
     #[rust]
+    editing_site: usize,
+    #[rust]
     load_id: Option<StorageRequestId>,
     #[rust]
     save_id: Option<StorageRequestId>,
@@ -645,10 +812,15 @@ impl App {
         self.ui
             .widget(cx, ids!(history_panel))
             .set_visible(cx, surface == Surface::History);
+        self.ui
+            .widget(cx, ids!(sites_panel))
+            .set_visible(cx, surface == Surface::Sites);
         self.web(cx).set_visible(cx, surface == Surface::Page);
         if surface == Surface::Start {
             self.web(cx).blur(cx);
         }
+        let state = self.web(cx).state();
+        self.refresh_nav_state(cx, state.can_go_back, state.can_go_forward);
     }
 
     fn default_surface(&self) -> Surface {
@@ -673,12 +845,70 @@ impl App {
             } else {
                 ids!(active.off)
             };
-            if animate {
+            if animate && !self.settings.reduced_motion {
                 mark.animator_play(cx, state);
             } else {
                 mark.animator_cut(cx, state);
             }
         }
+    }
+
+    fn refresh_tab_titles(&self, cx: &mut Cx) {
+        let tabs = [ids!(tab1), ids!(tab2), ids!(tab3)];
+        for (i, id) in tabs.into_iter().enumerate() {
+            let title = tab_label(&self.settings.tabs[i], i);
+            self.ui.button(cx, id).set_text(cx, &title);
+        }
+    }
+
+    fn refresh_nav_state(&self, cx: &mut Cx, can_back: bool, can_forward: bool) {
+        let enabled = self.surface == Surface::Page;
+        self.ui.button(cx, ids!(back)).set_enabled(cx, enabled && can_back);
+        self.ui
+            .button(cx, ids!(forward))
+            .set_enabled(cx, enabled && can_forward);
+    }
+
+    fn set_loading(&self, cx: &mut Cx, loading: bool) {
+        self.ui.widget(cx, ids!(load_bar)).set_visible(cx, loading);
+    }
+
+    fn refresh_rail(&self, cx: &mut Cx) {
+        let labels = [
+            ids!(site1_label),
+            ids!(site2_label),
+            ids!(site3_label),
+            ids!(site4_label),
+            ids!(site5_label),
+            ids!(site6_label),
+        ];
+        let favicons = [ids!(fav1), ids!(fav2), ids!(fav3), ids!(fav4), ids!(fav5), ids!(fav6)];
+        for (i, (label_id, fav_id)) in labels.into_iter().zip(favicons).enumerate() {
+            let site = &self.settings.sites[i];
+            self.ui.label(cx, label_id).set_text(cx, &site.label);
+            self.ui
+                .widget(cx, label_id)
+                .set_visible(cx, site.custom || self.settings.labels);
+            self.ui.widget(cx, fav_id).set_visible(cx, !site.custom);
+        }
+    }
+
+    fn refresh_sites(&self, cx: &mut Cx) {
+        let rows = [
+            ids!(site_row1),
+            ids!(site_row2),
+            ids!(site_row3),
+            ids!(site_row4),
+            ids!(site_row5),
+            ids!(site_row6),
+        ];
+        for (i, id) in rows.into_iter().enumerate() {
+            let marker = if i == self.editing_site { "›" } else { " " };
+            let text = format!("{} {} · {}", marker, i + 1, self.settings.sites[i].label);
+            self.ui.button(cx, id).set_text(cx, &text);
+        }
+        let url = self.settings.sites[self.editing_site].url.clone();
+        self.ui.text_input(cx, ids!(site_input)).set_text(cx, &url);
     }
 
     fn resolve(&self, input: &str) -> String {
@@ -719,12 +949,15 @@ impl App {
         self.set_surface(cx, Surface::Page);
         self.web(cx).set_url(cx, &url);
         self.ui.text_input(cx, ids!(omnibox)).set_text(cx, &url);
+        self.set_loading(cx, true);
+        self.refresh_tab_titles(cx);
         self.refresh_history(cx);
         self.persist(cx);
     }
 
     fn go_home(&mut self, cx: &mut Cx) {
         self.set_surface(cx, Surface::Start);
+        self.set_loading(cx, false);
         self.ui.text_input(cx, ids!(omnibox)).set_text(cx, "");
         self.ui.text_input(cx, ids!(start_search)).set_text(cx, "");
     }
@@ -732,6 +965,7 @@ impl App {
     fn switch_tab(&mut self, cx: &mut Cx, index: usize) {
         self.settings.active = index;
         self.refresh_tabs(cx, true);
+        self.set_loading(cx, false);
         let url = self.settings.tabs[index].clone();
         if url.is_empty() {
             self.set_surface(cx, Surface::Start);
@@ -740,7 +974,9 @@ impl App {
             self.set_surface(cx, Surface::Page);
             self.web(cx).set_url(cx, &url);
             self.ui.text_input(cx, ids!(omnibox)).set_text(cx, &url);
+            self.set_loading(cx, true);
         }
+        self.refresh_tab_titles(cx);
         self.persist(cx);
     }
 
@@ -766,8 +1002,16 @@ impl App {
                         short.to_string()
                     }
                 })
-                .unwrap_or_else(|| "—".to_string());
-            self.ui.button(cx, id).set_text(cx, &text);
+                .unwrap_or_else(|| {
+                    if i == 0 {
+                        "No history yet — visited pages appear here".to_string()
+                    } else {
+                        String::new()
+                    }
+                });
+            let button = self.ui.button(cx, id);
+            button.set_text(cx, &text);
+            button.set_enabled(cx, self.settings.history.get(i).is_some());
         }
     }
 
@@ -793,6 +1037,14 @@ impl App {
                 ids!(engine_row),
                 format!("Search engine  ·  {}", ENGINES[self.settings.engine as usize].0),
             ),
+            (
+                ids!(motion_row),
+                format!(
+                    "Motion  ·  {}",
+                    if self.settings.reduced_motion { "Reduced" } else { "Subtle" }
+                ),
+            ),
+            (ids!(sites_row), "Edit site rail".to_string()),
         ];
         for (id, text) in values {
             self.ui.button(cx, id).set_text(cx, &text);
@@ -819,18 +1071,10 @@ impl App {
                 ..Walk::default()
             },
         );
-        let labels = [
-            ids!(site1_label),
-            ids!(site2_label),
-            ids!(site3_label),
-            ids!(site4_label),
-            ids!(site5_label),
-            ids!(site6_label),
-        ];
-        for id in labels {
-            self.ui.widget(cx, id).set_visible(cx, self.settings.labels);
-        }
+        self.refresh_rail(cx);
         self.refresh_tabs(cx, false);
+        self.refresh_tab_titles(cx);
+        self.refresh_sites(cx);
         self.refresh_settings(cx);
         self.refresh_history(cx);
     }
@@ -857,6 +1101,7 @@ impl App {
                     }
                 }
                 self.apply_appearance(cx);
+                self.set_loading(cx, false);
                 let surface = self.default_surface();
                 self.set_surface(cx, surface);
                 if surface == Surface::Page {
@@ -875,7 +1120,16 @@ impl App {
 macro_rules! site_click {
     ($self:expr, $cx:expr, $actions:expr, $id:ident, $index:expr) => {
         if $self.ui.button($cx, ids!($id)).clicked($actions) {
-            $self.navigate($cx, SITES[$index].2);
+            let url = $self.settings.sites[$index].url.clone();
+            $self.navigate($cx, &url);
+        }
+    };
+}
+
+macro_rules! suggest_click {
+    ($self:expr, $cx:expr, $actions:expr, $id:ident, $index:expr) => {
+        if $self.ui.button($cx, ids!($id)).clicked($actions) {
+            $self.navigate($cx, SITES[$index].1);
         }
     };
 }
@@ -921,10 +1175,10 @@ impl MatchEvent for App {
         site_click!(self, cx, actions, site4, 3);
         site_click!(self, cx, actions, site5, 4);
         site_click!(self, cx, actions, site6, 5);
-        site_click!(self, cx, actions, suggest1, 0);
-        site_click!(self, cx, actions, suggest2, 1);
-        site_click!(self, cx, actions, suggest3, 2);
-        site_click!(self, cx, actions, suggest4, 3);
+        suggest_click!(self, cx, actions, suggest1, 0);
+        suggest_click!(self, cx, actions, suggest2, 1);
+        suggest_click!(self, cx, actions, suggest3, 2);
+        suggest_click!(self, cx, actions, suggest4, 3);
 
         if self.ui.button(cx, ids!(rail_settings)).clicked(actions) {
             self.set_surface(cx, Surface::Settings);
@@ -938,8 +1192,14 @@ impl MatchEvent for App {
         }
         if self.ui.button(cx, ids!(settings_close)).clicked(actions)
             || self.ui.button(cx, ids!(history_close)).clicked(actions)
+            || self.ui.button(cx, ids!(sites_close)).clicked(actions)
         {
             self.close_panels(cx);
+        }
+        if self.ui.button(cx, ids!(history_clear)).clicked(actions) {
+            self.settings.history.clear();
+            self.refresh_history(cx);
+            self.persist(cx);
         }
 
         if self.ui.button(cx, ids!(theme_row)).clicked(actions) {
@@ -965,6 +1225,62 @@ impl MatchEvent for App {
         if self.ui.button(cx, ids!(engine_row)).clicked(actions) {
             self.settings.engine = (self.settings.engine + 1) % 3;
             self.apply_appearance(cx);
+            self.persist(cx);
+        }
+        if self.ui.button(cx, ids!(motion_row)).clicked(actions) {
+            self.settings.reduced_motion = !self.settings.reduced_motion;
+            self.apply_appearance(cx);
+            self.persist(cx);
+        }
+        if self.ui.button(cx, ids!(sites_row)).clicked(actions) {
+            self.refresh_sites(cx);
+            self.set_surface(cx, Surface::Sites);
+        }
+
+        let site_rows = [
+            ids!(site_row1),
+            ids!(site_row2),
+            ids!(site_row3),
+            ids!(site_row4),
+            ids!(site_row5),
+            ids!(site_row6),
+        ];
+        for (i, id) in site_rows.into_iter().enumerate() {
+            if self.ui.button(cx, id).clicked(actions) {
+                self.editing_site = i;
+                self.refresh_sites(cx);
+                break;
+            }
+        }
+        if self.ui.button(cx, ids!(site_save)).clicked(actions) {
+            let typed = self.ui.text_input(cx, ids!(site_input)).text();
+            let url = self.resolve(&typed);
+            if !url.is_empty() {
+                let label = site_label_from_url(&url);
+                if let Some(slot) = self.settings.sites.get_mut(self.editing_site) {
+                    *slot = Site {
+                        label,
+                        url,
+                        custom: true,
+                    };
+                }
+                self.refresh_rail(cx);
+                self.refresh_sites(cx);
+                self.persist(cx);
+            }
+        }
+        if self.ui.button(cx, ids!(site_default)).clicked(actions) {
+            if let Some(slot) = self.settings.sites.get_mut(self.editing_site) {
+                *slot = Site::default_site(self.editing_site);
+            }
+            self.refresh_rail(cx);
+            self.refresh_sites(cx);
+            self.persist(cx);
+        }
+        if self.ui.button(cx, ids!(site_all_default)).clicked(actions) {
+            self.settings.sites = (0..SITES.len()).map(Site::default_site).collect();
+            self.refresh_rail(cx);
+            self.refresh_sites(cx);
             self.persist(cx);
         }
 
@@ -998,8 +1314,15 @@ impl MatchEvent for App {
                     self.settings.tabs[self.settings.active] = url.clone();
                     self.push_history(url.clone());
                     self.ui.text_input(cx, ids!(omnibox)).set_text(cx, &url);
+                    self.refresh_tab_titles(cx);
                     self.refresh_history(cx);
                     self.persist(cx);
+                }
+                WebViewAction::Nav { can_back, can_forward } => {
+                    self.refresh_nav_state(cx, can_back, can_forward);
+                }
+                WebViewAction::Loading(loading) => {
+                    self.set_loading(cx, loading);
                 }
                 _ => {}
             }
