@@ -59,7 +59,7 @@ https://github.com/owlclockl/anifa/releases/tag/slate-browser-latest
 Прямая ссылка на файл:
 https://github.com/owlclockl/anifa/releases/download/slate-browser-latest/slate-browser.apk
 
-SHA-256: `85a860d9d78f637e4bc19b9a0ee45d657f1029ab13caeaa3f46c13b9621b87cf`
+SHA-256: `c317e32e4dae1bf04440f2961c7ebbe6386aee72d12e1ab13b7ed5e4b22b223e`
 
 Сборка делается workflow GitHub Actions; каждый успешный запуск обновляет этот релиз.
 
