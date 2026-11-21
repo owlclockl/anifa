@@ -19,6 +19,9 @@ const stylePath = styleMatch[0].match(/href="([^"]+)"/)[1];
 let js = readFileSync(resolve(dist, scriptPath), "utf8");
 const css = readFileSync(resolve(dist, stylePath), "utf8");
 
+// The stylesheet is inlined above, so the emitted style loader is unnecessary.
+js = js.replace(/import\s*["'][^"']+["'];?/g, "");
+
 // A literal closing script tag inside the bundle would end the inline block.
 js = js.replace(/<\/script/gi, "<\\/script");
 
