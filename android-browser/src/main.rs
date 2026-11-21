@@ -12,6 +12,7 @@ use makepad_widgets::makepad_platform::storage::{
     StorageRequestId, StorageResponse, StorageResult,
 };
 use makepad_widgets::*;
+use std::collections::HashSet;
 
 app_main!(App);
 
@@ -24,11 +25,21 @@ const SITES: [(&str, &str); 6] = [
     ("Internet Archive", "https://archive.org"),
 ];
 
-const ENGINES: [(&str, &str); 3] = [
-    ("DuckDuckGo", "https://duckduckgo.com/?q="),
+const SEARCH_SOURCES: [(&str, &str); 2] = [
+    ("DuckDuckGo", "https://html.duckduckgo.com/html/?q="),
     ("Bing", "https://www.bing.com/search?q="),
-    ("Google", "https://www.google.com/search?q="),
 ];
+const SOURCE_PRESETS: [&str; 3] = ["Both", "DuckDuckGo", "Bing"];
+const SEARCH_RESULTS: usize = 8;
+const SEARCH_USER_AGENT: &str =
+    "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/131 Mobile Safari/537.36";
+
+#[derive(Clone, Debug)]
+struct SearchResult {
+    title: String,
+    url: String,
+    source: usize,
+}
 
 const THEMES: [&str; 3] = ["Moon dark", "Paper light", "Skeleton"];
 const ACCENTS: [&str; 3] = ["Ice", "Copper", "Moss"];
@@ -41,6 +52,7 @@ enum Surface {
     Settings,
     History,
     Sites,
+    Search,
 }
 
 impl Default for Surface {
@@ -220,6 +232,181 @@ fn percent_encode(input: &str) -> String {
     out
 }
 
+fn percent_decode(input: &str) -> String {
+    let bytes = input.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            let hex = &input[i + 1..i + 3];
+            if let Ok(value) = u8::from_str_radix(hex, 16) {
+                out.push(value);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+fn html_unescape(input: &str) -> String {
+    let mut out = input.to_string();
+    for (from, to) in [
+        ("&#39;", "'"),
+        ("&#x27;", "'"),
+        ("&quot;", "\""),
+        ("&lt;", "<"),
+        ("&gt;", ">"),
+        ("&nbsp;", " "),
+        ("&amp;", "&"),
+    ] {
+        out = out.replace(from, to);
+    }
+    out
+}
+
+fn strip_tags(input: &str) -> String {
+    let mut out = String::new();
+    let mut inside = false;
+    for ch in input.chars() {
+        if ch == '<' {
+            inside = true;
+        } else if ch == '>' {
+            inside = false;
+        } else if !inside {
+            out.push(ch);
+        }
+    }
+    html_unescape(&out).split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn attr(tag: &str, name: &str) -> Option<String> {
+    let needle = format!("{name}=\"");
+    let start = tag.find(&needle)? + needle.len();
+    let end = tag[start..].find('"')? + start;
+    Some(html_unescape(&tag[start..end]))
+}
+
+fn result_url(href: &str) -> String {
+    let href = html_unescape(href);
+    if let Some(pos) = href.find("uddg=") {
+        let value = href[pos + 5..].split('&').next().unwrap_or("");
+        let decoded = percent_decode(value);
+        if decoded.starts_with("http://") || decoded.starts_with("https://") {
+            return decoded;
+        }
+    }
+    if href.starts_with("//") {
+        return format!("https:{href}");
+    }
+    if href.starts_with("http://") || href.starts_with("https://") {
+        return href;
+    }
+    String::new()
+}
+
+fn parse_ddg_results(html: &str) -> Vec<SearchResult> {
+    let mut out = Vec::new();
+    let mut rest = html;
+    while let Some(pos) = rest.find("result__a") {
+        let Some(open) = rest[..pos].rfind("<a ").or_else(|| rest[..pos].rfind("<a>")) else {
+            rest = &rest[pos + 9..];
+            continue;
+        };
+        let Some(gt) = rest[open..].find('>').map(|i| open + i) else {
+            break;
+        };
+        let href = attr(&rest[open..gt], "href").unwrap_or_default();
+        let body_start = gt + 1;
+        let Some(close) = rest[body_start..].find("</a>").map(|i| body_start + i) else {
+            break;
+        };
+        let title = strip_tags(&rest[body_start..close]);
+        let url = result_url(&href);
+        if !title.is_empty() && !url.is_empty() {
+            out.push(SearchResult { title, url, source: 0 });
+        }
+        rest = &rest[close + 4..];
+    }
+    out
+}
+
+fn parse_bing_results(html: &str) -> Vec<SearchResult> {
+    let mut out = Vec::new();
+    let mut rest = html;
+    while let Some(pos) = rest.find("class=\"b_algo\"") {
+        let section = &rest[pos..];
+        let Some(open) = section.find("<a ") else {
+            break;
+        };
+        let Some(gt) = section[open..].find('>').map(|i| open + i) else {
+            break;
+        };
+        let href = attr(&section[open..gt], "href").unwrap_or_default();
+        let body_start = gt + 1;
+        let Some(close) = section[body_start..].find("</a>").map(|i| body_start + i) else {
+            break;
+        };
+        let title = strip_tags(&section[body_start..close]);
+        let url = result_url(&href);
+        if !title.is_empty() && !url.is_empty() {
+            out.push(SearchResult { title, url, source: 1 });
+        }
+        rest = &rest[pos + close + 4..];
+    }
+    out
+}
+
+fn parse_search_results(source: usize, html: &str) -> Vec<SearchResult> {
+    if source == 0 {
+        parse_ddg_results(html)
+    } else {
+        parse_bing_results(html)
+    }
+}
+
+fn merge_search_results(groups: &[Vec<SearchResult>]) -> Vec<SearchResult> {
+    let mut seen = HashSet::new();
+    let mut out = Vec::new();
+    let longest = groups.iter().map(Vec::len).max().unwrap_or(0);
+    for rank in 0..longest {
+        for group in groups {
+            let Some(result) = group.get(rank) else {
+                continue;
+            };
+            let key = result
+                .url
+                .split('?')
+                .next()
+                .unwrap_or(&result.url)
+                .trim_end_matches('/')
+                .to_string();
+            if seen.insert(key) {
+                out.push(result.clone());
+                if out.len() == SEARCH_RESULTS {
+                    return out;
+                }
+            }
+        }
+    }
+    out
+}
+
+fn search_source_urls(query: &str, preset: u8) -> Vec<(usize, String)> {
+    let encoded = percent_encode(query);
+    let indices: &[usize] = match preset {
+        1 => &[0],
+        2 => &[1],
+        _ => &[0, 1],
+    };
+    indices
+        .iter()
+        .map(|&i| (i, format!("{}{}", SEARCH_SOURCES[i].1, encoded)))
+        .collect()
+}
+
 script_mod! {
     use mod.prelude.widgets.*
     use mod.widgets.*
@@ -372,6 +559,13 @@ script_mod! {
                                     draw_icon.svg: crate_resource("self:resources/icons/forward.svg")
                                     draw_icon.color: theme.color_text
                                     icon_walk: Walk{width: 18 height: Fit}
+                                }
+                                search_go := ButtonFlatterIcon{
+                                    width: 36 height: 40
+                                    margin: 0
+                                    draw_icon.svg: crate_resource("self:resources/icons/search.svg")
+                                    draw_icon.color: theme.color_text_meta
+                                    icon_walk: Walk{width: 16 height: Fit}
                                 }
                                 omnibox := TextInput{
                                     width: Fill height: 40
@@ -690,6 +884,57 @@ script_mod! {
                                     site_all_default := ButtonFlatter{width: Fill height: 36 margin: 0 text: "Reset all" draw_text +: {color: theme.color_text_meta text_style: theme.font_regular{font_size: 11}}}
                                 }
                             }
+
+                            search_panel := View{
+                                visible: false
+                                width: Fill height: Fill
+                                flow: Down
+                                spacing: 0
+                                padding: Inset{left: 24 right: 24 top: 24 bottom: 24}
+                                show_bg: true
+                                draw_bg.color: theme.color_bg_app
+
+                                search_header := View{
+                                    width: Fill height: 44
+                                    flow: Right spacing: 8
+                                    align: Align{x: 0.0 y: 0.5}
+                                    search_title := Label{
+                                        width: Fill height: 44
+                                        text: "Slate Search"
+                                        draw_text +: {color: theme.color_text text_style: theme.font_bold{font_size: 16}}
+                                    }
+                                    search_close := ButtonFlatterIcon{
+                                        width: 36 height: 36
+                                        margin: 0
+                                        draw_icon.svg: crate_resource("self:resources/icons/close.svg")
+                                        draw_icon.color: theme.color_text_meta
+                                        icon_walk: Walk{width: 16 height: Fit}
+                                    }
+                                }
+                                search_query := Label{
+                                    width: Fill height: 28
+                                    text: ""
+                                    draw_text +: {color: theme.color_text_meta text_style: theme.font_regular{font_size: 11}}
+                                }
+                                search_status := Label{
+                                    width: Fill height: 24
+                                    text: ""
+                                    draw_text +: {color: theme.color_text_meta text_style: theme.font_regular{font_size: 10}}
+                                }
+                                search_rule := View{
+                                    width: Fill height: 1
+                                    show_bg: true
+                                    draw_bg.color: theme.color_bevel_outset_1
+                                }
+                                result1 := ButtonFlatter{width: Fill height: 46 margin: 0 text: "" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                result2 := ButtonFlatter{width: Fill height: 46 margin: 0 text: "" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                result3 := ButtonFlatter{width: Fill height: 46 margin: 0 text: "" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                result4 := ButtonFlatter{width: Fill height: 46 margin: 0 text: "" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                result5 := ButtonFlatter{width: Fill height: 46 margin: 0 text: "" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                result6 := ButtonFlatter{width: Fill height: 46 margin: 0 text: "" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                result7 := ButtonFlatter{width: Fill height: 46 margin: 0 text: "" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                                result8 := ButtonFlatter{width: Fill height: 46 margin: 0 text: "" align: Align{x: 0.0 y: 0.5} draw_text +: {color: theme.color_text text_style: theme.font_regular{font_size: 11}}}
+                            }
                         }
                     }
 
@@ -793,6 +1038,18 @@ pub struct App {
     #[rust]
     editing_site: usize,
     #[rust]
+    search_query: String,
+    #[rust]
+    search_return: Surface,
+    #[rust]
+    search_results: Vec<SearchResult>,
+    #[rust]
+    search_groups: Vec<Vec<SearchResult>>,
+    #[rust]
+    search_requests: Vec<(LiveId, usize)>,
+    #[rust]
+    search_failed: usize,
+    #[rust]
     load_id: Option<StorageRequestId>,
     #[rust]
     save_id: Option<StorageRequestId>,
@@ -817,6 +1074,9 @@ impl App {
         self.ui
             .widget(cx, ids!(sites_panel))
             .set_visible(cx, surface == Surface::Sites);
+        self.ui
+            .widget(cx, ids!(search_panel))
+            .set_visible(cx, surface == Surface::Search);
         self.web(cx).set_visible(cx, surface == Surface::Page);
         if surface == Surface::Start {
             self.web(cx).blur(cx);
@@ -913,7 +1173,7 @@ impl App {
         self.ui.text_input(cx, ids!(site_input)).set_text(cx, &url);
     }
 
-    fn resolve(&self, input: &str) -> String {
+    fn normalize_url(&self, input: &str) -> String {
         let value = input.trim();
         if value.is_empty() {
             return String::new();
@@ -929,7 +1189,11 @@ impl App {
         if host.contains('.') && !host.contains(' ') {
             return format!("https://{value}");
         }
-        format!("{}{}", ENGINES[self.settings.engine as usize].1, percent_encode(value))
+        String::new()
+    }
+
+    fn is_web_address(&self, input: &str) -> bool {
+        !self.normalize_url(input).is_empty()
     }
 
     fn push_history(&mut self, url: String) {
@@ -942,7 +1206,7 @@ impl App {
     }
 
     fn navigate(&mut self, cx: &mut Cx, input: &str) {
-        let url = self.resolve(input);
+        let url = self.normalize_url(input);
         if url.is_empty() {
             return;
         }
@@ -955,6 +1219,127 @@ impl App {
         self.refresh_tab_titles(cx);
         self.refresh_history(cx);
         self.persist(cx);
+    }
+
+    fn submit(&mut self, cx: &mut Cx, input: &str) {
+        let value = input.trim();
+        if value.is_empty() {
+            return;
+        }
+        if self.is_web_address(value) {
+            self.navigate(cx, value);
+        } else {
+            self.start_search(cx, value);
+        }
+    }
+
+    fn refresh_search(&self, cx: &mut Cx, searching: bool, status: &str) {
+        self.ui
+            .label(cx, ids!(search_query))
+            .set_text(cx, &self.search_query);
+        self.ui
+            .label(cx, ids!(search_status))
+            .set_text(cx, status);
+        let ids = [
+            ids!(result1),
+            ids!(result2),
+            ids!(result3),
+            ids!(result4),
+            ids!(result5),
+            ids!(result6),
+            ids!(result7),
+            ids!(result8),
+        ];
+        for (i, id) in ids.into_iter().enumerate() {
+            let button = self.ui.button(cx, id);
+            if let Some(result) = self.search_results.get(i) {
+                let text = format!("{} · {}", result.title, SEARCH_SOURCES[result.source].0);
+                button.set_text(cx, &text);
+                button.set_enabled(cx, true);
+            } else {
+                button.set_text(cx, "");
+                button.set_enabled(cx, false);
+            }
+        }
+        let _ = searching;
+    }
+
+    fn start_search(&mut self, cx: &mut Cx, query: &str) {
+        self.search_query = query.trim().to_string();
+        self.search_return = self.surface;
+        self.search_results.clear();
+        self.search_groups = vec![Vec::new(); SEARCH_SOURCES.len()];
+        self.search_requests.clear();
+        self.search_failed = 0;
+        self.set_surface(cx, Surface::Search);
+        self.set_loading(cx, false);
+        self.ui
+            .text_input(cx, ids!(omnibox))
+            .set_text(cx, &self.search_query);
+        self.refresh_search(cx, true, "Searching DuckDuckGo and Bing…");
+
+        for (source, url) in search_source_urls(&self.search_query, self.settings.engine) {
+            let request_id = LiveId::unique();
+            let mut request = HttpRequest::new(url, HttpMethod::GET);
+            request.set_header(
+                "User-Agent".to_string(),
+                SEARCH_USER_AGENT.to_string(),
+            );
+            cx.http_request(request_id, request);
+            self.search_requests.push((request_id, source));
+        }
+    }
+
+    fn close_search(&mut self, cx: &mut Cx) {
+        let surface = self.search_return;
+        self.set_surface(cx, surface);
+    }
+
+    fn on_network(&mut self, cx: &mut Cx, responses: &[NetworkResponse]) {
+        if self.surface != Surface::Search || self.search_requests.is_empty() {
+            return;
+        }
+        for item in responses {
+            let (request_id, body) = match item {
+                NetworkResponse::HttpResponse { request_id, response } => {
+                    (*request_id, response.get_string_body())
+                }
+                NetworkResponse::HttpError { request_id, .. } => (*request_id, None),
+                _ => continue,
+            };
+            let Some(position) = self
+                .search_requests
+                .iter()
+                .position(|(id, _)| *id == request_id)
+            else {
+                continue;
+            };
+            let (_, source) = self.search_requests.remove(position);
+            match body {
+                Some(html) => {
+                    self.search_groups[source] = parse_search_results(source, &html);
+                }
+                None => self.search_failed += 1,
+            }
+        }
+        if self.search_requests.is_empty() {
+            self.search_results = merge_search_results(&self.search_groups);
+            let status = if self.search_results.is_empty() {
+                if self.search_failed > 0 {
+                    "Search sources are unavailable. Check the connection and try again."
+                        .to_string()
+                } else {
+                    "No results found. Try a shorter query.".to_string()
+                }
+            } else {
+                format!(
+                    "{} results · {}",
+                    self.search_results.len(),
+                    SOURCE_PRESETS[self.settings.engine as usize]
+                )
+            };
+            self.refresh_search(cx, false, &status);
+        }
     }
 
     fn go_home(&mut self, cx: &mut Cx) {
@@ -1037,7 +1422,7 @@ impl App {
             ),
             (
                 ids!(engine_row),
-                format!("Search engine  ·  {}", ENGINES[self.settings.engine as usize].0),
+                format!("Search sources  ·  {}", SOURCE_PRESETS[self.settings.engine as usize]),
             ),
             (
                 ids!(motion_row),
@@ -1141,12 +1526,16 @@ impl MatchEvent for App {
         let omnibox = self.ui.text_input(cx, ids!(omnibox));
         if let Some((text, _)) = omnibox.returned(actions) {
             let text = text.clone();
-            self.navigate(cx, &text);
+            self.submit(cx, &text);
         }
         let start_search = self.ui.text_input(cx, ids!(start_search));
         if let Some((text, _)) = start_search.returned(actions) {
             let text = text.clone();
-            self.navigate(cx, &text);
+            self.submit(cx, &text);
+        }
+        if self.ui.button(cx, ids!(search_go)).clicked(actions) {
+            let text = self.ui.text_input(cx, ids!(omnibox)).text();
+            self.submit(cx, &text);
         }
 
         if self.ui.button(cx, ids!(back)).clicked(actions) {
@@ -1198,6 +1587,29 @@ impl MatchEvent for App {
         {
             self.close_panels(cx);
         }
+        if self.ui.button(cx, ids!(search_close)).clicked(actions) {
+            self.close_search(cx);
+        }
+
+        let result_ids = [
+            ids!(result1),
+            ids!(result2),
+            ids!(result3),
+            ids!(result4),
+            ids!(result5),
+            ids!(result6),
+            ids!(result7),
+            ids!(result8),
+        ];
+        for (i, id) in result_ids.into_iter().enumerate() {
+            if self.ui.button(cx, id).clicked(actions) {
+                if let Some(result) = self.search_results.get(i).cloned() {
+                    self.navigate(cx, &result.url);
+                }
+                break;
+            }
+        }
+
         if self.ui.button(cx, ids!(history_clear)).clicked(actions) {
             self.settings.history.clear();
             self.refresh_history(cx);
@@ -1256,7 +1668,7 @@ impl MatchEvent for App {
         }
         if self.ui.button(cx, ids!(site_save)).clicked(actions) {
             let typed = self.ui.text_input(cx, ids!(site_input)).text();
-            let url = self.resolve(&typed);
+            let url = self.normalize_url(&typed);
             if !url.is_empty() {
                 let label = site_label_from_url(&url);
                 if let Some(slot) = self.settings.sites.get_mut(self.editing_site) {
@@ -1342,13 +1754,18 @@ impl AppMain for App {
         if let Event::Storage(responses) = event {
             self.on_storage(cx, responses);
         }
+        if let Event::NetworkResponses(responses) = event {
+            self.on_network(cx, responses);
+        }
         if let Event::Startup = event {
             self.load(cx);
             self.set_surface(cx, Surface::Start);
         }
         if matches!(event, Event::BackPressed { .. }) {
             if event.back_pressed() {
-                if self.surface != Surface::Page && self.surface != Surface::Start {
+                if self.surface == Surface::Search {
+                    self.close_search(cx);
+                } else if self.surface != Surface::Page && self.surface != Surface::Start {
                     self.close_panels(cx);
                 } else if self.web(cx).state().can_go_back {
                     self.web(cx).history(cx, -1);
