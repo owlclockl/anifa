@@ -43,7 +43,12 @@ APK появится в `android-browser/target/makepad-android-apk/`. В реп
 
 ## Готовая сборка
 
-Успешная сборка ARM64 (minSdk 26):
-https://github.com/owlclockl/anifa/actions/runs/44936841794
+Готовый ARM64 APK (minSdk 26) лежит в пре-релизе:
+https://github.com/owlclockl/anifa/releases/tag/slate-browser-latest
 
-APK лежит в артефакте `slate-browser-apk` этого запуска.
+Прямая ссылка на файл:
+https://github.com/owlclockl/anifa/releases/download/slate-browser-latest/slate-browser.apk
+
+SHA-256: `5cf6809e759e55cb40429831b5aa1d654ee4fbcdb61d0caa5d80c402d758e077`
+
+Сборка делается workflow GitHub Actions; каждый успешный запуск обновляет этот релиз.
