@@ -45,7 +45,17 @@ jobs:
 
       - name: Build the APK
         working-directory: android-browser
-        run: cargo makepad android --abi=aarch64 build --release
+        run: |
+          set +e
+          cargo makepad android --abi=aarch64 build --release 2>&1 | tee /tmp/slate-build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            grep -E '^(error|warning|thread|note|  -->|   -->)' /tmp/slate-build.log | tail -n 50 | while IFS= read -r line; do
+              echo "::error::apk build: $line"
+            done
+            echo "::error::apk build: full log lines: $(wc -l < /tmp/slate-build.log)"
+            exit "$status"
+          fi
 
       - name: Upload the APK
         uses: actions/upload-artifact@v4
