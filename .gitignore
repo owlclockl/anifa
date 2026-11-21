@@ -1,2 +1,5 @@
 __pycache__/
 .venv/
+
+# Rust / Android build output
+android-browser/target/

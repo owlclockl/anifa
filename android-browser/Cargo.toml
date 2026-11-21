@@ -1,0 +1,22 @@
+[package]
+name = "slate-browser"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "A fully custom Rust browser for Android with a full-height site rail"
+
+[package.metadata.packager]
+identifier = "com.owlclockl.slate.browser"
+product_name = "Slate Browser"
+
+[package.metadata.makepad.android]
+version_code = 1
+version_name = "0.1.0"
+min_sdk_version = 26
+
+[[bin]]
+name = "slate-browser"
+path = "src/main.rs"
+
+[dependencies]
+makepad-widgets = { git = "https://github.com/makepad/makepad", rev = "506ec05105b9adb08d1d21f9879df181b5244ea7", default-features = false, features = ["browser"] }

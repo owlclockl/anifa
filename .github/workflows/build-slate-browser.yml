@@ -1,0 +1,47 @@
+name: Build Slate Browser APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'arena/**'
+    paths:
+      - 'android-browser/**'
+      - '.github/workflows/build-slate-browser.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Install Makepad build tool
+        run: |
+          cargo install --git https://github.com/makepad/makepad \
+            --rev 506ec05105b9adb08d1d21f9879df181b5244ea7 \
+            --package cargo-makepad
+
+      - name: Install Android SDK and NDK
+        working-directory: android-browser
+        run: cargo makepad android --abi=aarch64 toolchain-install
+
+      - name: Build the APK
+        working-directory: android-browser
+        run: cargo makepad android --abi=aarch64 build --release
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: slate-browser-apk
+          path: android-browser/target/**/*.apk
+          if-no-files-found: error
