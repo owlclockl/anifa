@@ -10,7 +10,7 @@ on:
       - '.github/workflows/build-slate-browser.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -81,3 +81,21 @@ jobs:
           name: slate-browser-apk
           path: android-browser/target/**/*.apk
           if-no-files-found: error
+
+      - name: Publish the APK in a GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          apk=$(find android-browser/target -name '*.apk' -type f | head -n 1)
+          if [ -z "$apk" ]; then
+            echo "::error::no APK found to publish"
+            exit 1
+          fi
+          cp "$apk" slate-browser.apk
+          gh release delete slate-browser-latest --yes --cleanup-tag >/dev/null 2>&1 || true
+          gh release create slate-browser-latest slate-browser.apk \
+            --target "$GITHUB_SHA" \
+            --title "Slate Browser — latest build" \
+            --notes "ARM64 APK (minSdk 26), built from this branch by GitHub Actions." \
+            --prerelease
