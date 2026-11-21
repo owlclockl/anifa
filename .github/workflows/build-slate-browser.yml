@@ -57,10 +57,13 @@ jobs:
             grep -A8 -E 'error\[E[0-9]+\]' /tmp/slate-build.log | tr '\n' '|' | fold -w 2500 | while IFS= read -r chunk; do
               echo "::error::apk build: $chunk"
             done
-            grep 'error:' /tmp/slate-build.log | tail -n 4 | while IFS= read -r line; do
-              echo "::error::apk build: $line"
+            grep -n -i -E 'error|panic|fail|undefined|invalid|unexpected|mismatch|cannot|no such|script' /tmp/slate-build.log | tail -n 20 | while IFS= read -r line; do
+              echo "::error::apk build match: $line"
             done
-            tail -n 40 /tmp/slate-build.log | tr '\n' '|' | fold -w 2500 | while IFS= read -r chunk; do
+            sed -n '35,110p' /tmp/slate-build.log | tr '\n' '|' | fold -w 2500 | while IFS= read -r chunk; do
+              echo "::error::apk build middle: $chunk"
+            done
+            tail -n 20 /tmp/slate-build.log | tr '\n' '|' | fold -w 2500 | while IFS= read -r chunk; do
               echo "::error::apk build tail: $chunk"
             done
             echo "::error::apk build: full log lines: $(wc -l < /tmp/slate-build.log)"
