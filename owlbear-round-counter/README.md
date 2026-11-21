@@ -42,10 +42,10 @@ npm run build
 
 ## Установка в Owlbear Rodeo
 
-Готовый манифест привязан к релизу `owlbear-round-counter-v1.0.0`:
+Готовый манифест привязан к релизу `owlbear-round-counter-v1.0.1`:
 
 ```
-https://raw.githubusercontent.com/owlclockl/anifa/owlbear-round-counter-v1.0.0/owlbear-round-counter/dist/manifest-install.json?v=2
+https://raw.githubusercontent.com/owlclockl/anifa/owlbear-round-counter-v1.0.1/owlbear-round-counter/dist/manifest-install.json
 ```
 
 В Owlbear Rodeo: Profile → Add Extension → вставьте эту ссылку. Затем включите
@@ -53,7 +53,7 @@ extension в комнате — кнопка `Round Counter` появится с
 
 Popover в релизе собран одним файлом (`dist/extension.html` со встроенными JS
 и CSS), поэтому raw-ссылки работают без дополнительного хостинга. Полный архив
-со статикой лежит в [релизе](https://github.com/owlclockl/anifa/releases/tag/owlbear-round-counter-v1.0.0).
+со статикой лежит в [релизе](https://github.com/owlclockl/anifa/releases/tag/owlbear-round-counter-v1.0.1).
 
 ## Технические детали
 
