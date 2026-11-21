@@ -43,6 +43,19 @@ jobs:
         working-directory: android-browser
         run: cargo makepad android --abi=aarch64 toolchain-install
 
+      - name: Diagnose cargo package
+        working-directory: android-browser
+        run: |
+          set +e
+          cargo pkgid -p slate-browser 2>&1 | tee /tmp/pkgid.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            tail -n 40 /tmp/pkgid.log | while IFS= read -r line; do
+              echo "::error::pkgid: $line"
+            done
+            exit "$status"
+          fi
+
       - name: Build the APK
         working-directory: android-browser
         run: |
