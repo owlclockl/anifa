@@ -26,7 +26,7 @@ Makepad UI (Rust + Splash DSL); страницы рендерит нативны
 cargo install --git https://github.com/makepad/makepad --rev 506ec05105b9adb08d1d21f9879df181b5244ea7 cargo-makepad
 cd android-browser
 cargo makepad android --abi=aarch64 toolchain-install
-cargo makepad android --abi=aarch64 --package-name=com.owlclockl.slate.browser --app-label="Slate Browser" build --release
+cargo makepad android --abi=aarch64 --package-name=com.owlclockl.slate.browser --app-label="Slate Browser" build -p slate-browser --release
 ```
 
 APK появится в `android-browser/target/makepad-android-apk/`. В репозитории

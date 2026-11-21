@@ -47,7 +47,7 @@ jobs:
         working-directory: android-browser
         run: |
           set +e
-          cargo makepad android --abi=aarch64 build --release 2>&1 | tee /tmp/slate-build.log
+          cargo makepad android --abi=aarch64 build -p slate-browser --release 2>&1 | tee /tmp/slate-build.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
             tail -n 50 /tmp/slate-build.log | while IFS= read -r line; do
