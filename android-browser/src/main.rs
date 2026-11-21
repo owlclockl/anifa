@@ -502,14 +502,14 @@ impl App {
 
     fn apply_appearance(&mut self, cx: &mut Cx) {
         match self.settings.theme {
-            0 => script_eval!(cx, {mod.theme = mod.themes.dark true}),
-            1 => script_eval!(cx, {mod.theme = mod.themes.light true}),
-            _ => script_eval!(cx, {mod.theme = mod.themes.skeleton true}),
+            0 => script_eval!(cx, {mod.theme = mod.themes.dark true});
+            1 => script_eval!(cx, {mod.theme = mod.themes.light true});
+            _ => script_eval!(cx, {mod.theme = mod.themes.skeleton true});
         }
         match self.settings.accent {
-            0 => script_eval!(cx, {mod.theme.color_focus = #9FC5E8FF true}),
-            1 => script_eval!(cx, {mod.theme.color_focus = #C89B78FF true}),
-            _ => script_eval!(cx, {mod.theme.color_focus = #8FB69AFF true}),
+            0 => script_eval!(cx, {mod.theme.color_focus = #9FC5E8FF true});
+            1 => script_eval!(cx, {mod.theme.color_focus = #C89B78FF true});
+            _ => script_eval!(cx, {mod.theme.color_focus = #8FB69AFF true});
         }
         let width = RAIL_WIDTHS[self.settings.rail as usize];
         self.ui.view(cx, ids!(rail)).set_walk(
