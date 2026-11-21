@@ -1,2 +1,24 @@
-__pycache__/
+# Dependencies
+node_modules/
 .venv/
+__pycache__/
+*.pyc
+
+# Builds
+dist/
+build/
+out/
+.next/
+.turbo/
+.vite/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+*.swp
