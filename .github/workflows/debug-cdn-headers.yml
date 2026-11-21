@@ -1,0 +1,18 @@
+name: Debug round counter CDN headers
+
+on:
+  workflow_dispatch:
+
+jobs:
+  headers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect jsDelivr headers
+        run: |
+          for url in \
+            'https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/manifest-install.json' \
+            'https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html' \
+            'https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/icon.svg'; do
+            echo "=== $url"
+            curl -sS -I -L "$url" | grep -iE '^(HTTP/|content-type|content-disposition|x-content-type-options|access-control-allow-origin|cross-origin-resource-policy|content-security-policy|location)' || true
+          done
