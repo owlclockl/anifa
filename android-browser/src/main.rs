@@ -709,7 +709,7 @@ impl AppMain for App {
             self.close_panels(cx);
             self.show_start(cx, true);
         }
-        if let Event::BackPressed = event {
+        if matches!(event, Event::BackPressed { .. }) {
             if event.back_pressed() {
                 if self.web(cx).state().can_go_back {
                     self.web(cx).history(cx, -1);
