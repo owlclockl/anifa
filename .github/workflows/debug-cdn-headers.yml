@@ -1,6 +1,9 @@
 name: Debug round counter CDN headers
 
 on:
+  push:
+    branches:
+      - arena/**
   workflow_dispatch:
 
 jobs:
