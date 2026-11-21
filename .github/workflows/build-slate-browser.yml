@@ -73,6 +73,9 @@ jobs:
             grep 'error:' /tmp/slate-build.log | tail -n 4 | while IFS= read -r line; do
               echo "::error::apk build: $line"
             done
+            tail -n 40 /tmp/slate-build.log | tr '\n' '|' | fold -w 2500 | while IFS= read -r chunk; do
+              echo "::error::apk build tail: $chunk"
+            done
             echo "::error::apk build: full log lines: $(wc -l < /tmp/slate-build.log)"
             exit "$status"
           fi
