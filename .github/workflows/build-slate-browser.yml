@@ -75,11 +75,58 @@ jobs:
           path: /tmp/slate-build.log
           if-no-files-found: ignore
 
+      - name: Verify the APK
+        run: |
+          set -e
+          apk=$(find android-browser/target -name '*.apk' ! -name '*.unaligned.apk' -type f | head -n 1)
+          if [ -z "$apk" ]; then
+            echo "::error::no signed APK candidate found"
+            exit 1
+          fi
+          echo "APK_PATH=$apk" >> "$GITHUB_ENV"
+
+          java_bin=$(find "$HOME/.makepad" -type f -path '*/openjdk/bin/java' | head -n 1)
+          signer=$(find "$HOME/.makepad" -type f -name apksigner.jar | head -n 1)
+          aapt=$(find "$HOME/.makepad" -type f \( -name aapt -o -name aapt2 \) | head -n 1)
+          echo "::notice::verification tools: java=$java_bin signer=$signer aapt=$aapt"
+          if [ -z "$java_bin" ] || [ -z "$signer" ]; then
+            echo "::error::apksigner tools not found in the installed SDK"
+            exit 1
+          fi
+
+          echo "::notice::selected APK: $apk ($(stat -c%s "$apk") bytes)"
+          unzip -t "$apk" > /tmp/zip-test.log
+          echo "::notice::zip integrity: $(tail -n 1 /tmp/zip-test.log | tr '\n' ' ')"
+
+          "$java_bin" -jar "$signer" verify --verbose --print-certs --min-sdk-version 26 "$apk" > /tmp/apksigner.log 2>&1 || {
+            cat /tmp/apksigner.log | tr '\n' '|' | fold -w 2500 | while IFS= read -r chunk; do
+              echo "::error::apksigner: $chunk"
+            done
+            exit 1
+          }
+          cat /tmp/apksigner.log | tr '\n' '|' | fold -w 2500 | while IFS= read -r chunk; do
+            echo "::notice::apksigner: $chunk"
+          done
+          if ! grep -Eq 'Verified using v2 scheme.*true' /tmp/apksigner.log; then
+            echo "::error::APK is missing an APK Signature Scheme v2 signature"
+            exit 1
+          fi
+
+          if [ -n "$aapt" ]; then
+            "$aapt" dump badging "$apk" > /tmp/badging.log 2>&1 || true
+            grep -E '^(package|sdkVersion|targetSdkVersion|application-label|native-code)' /tmp/badging.log \
+              | tr '\n' '|' | fold -w 2500 | while IFS= read -r chunk; do
+                echo "::notice::badging: $chunk"
+              done
+          fi
+
+          echo "::notice::sha256: $(sha256sum "$apk" | cut -d' ' -f1)"
+
       - name: Upload the APK
         uses: actions/upload-artifact@v4
         with:
           name: slate-browser-apk
-          path: android-browser/target/**/*.apk
+          path: ${{ env.APK_PATH }}
           if-no-files-found: error
 
       - name: Publish the APK in a GitHub Release
@@ -87,15 +134,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
-          apk=$(find android-browser/target -name '*.apk' -type f | head -n 1)
-          if [ -z "$apk" ]; then
-            echo "::error::no APK found to publish"
-            exit 1
-          fi
+          apk="$APK_PATH"
+          sha=$(sha256sum "$apk" | cut -d' ' -f1)
           cp "$apk" slate-browser.apk
           gh release delete slate-browser-latest --yes --cleanup-tag >/dev/null 2>&1 || true
           gh release create slate-browser-latest slate-browser.apk \
             --target "$GITHUB_SHA" \
             --title "Slate Browser — latest build" \
-            --notes "ARM64 APK (minSdk 26), built from this branch by GitHub Actions." \
+            --notes "ARM64 APK (minSdk 26), signed and verified by apksigner. SHA-256: $sha" \
             --prerelease
