@@ -1,0 +1,14 @@
+{
+  "name": "Round Counter (local)",
+  "version": "1.0.0",
+  "manifest_version": 1,
+  "description": "Local development manifest for the Round Counter extension",
+  "author": "owlclockl",
+  "action": {
+    "title": "Round Counter",
+    "icon": "http://localhost:5173/icon.svg",
+    "popover": "http://localhost:5173/extension.html",
+    "width": 320,
+    "height": 420
+  }
+}
