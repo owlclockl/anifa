@@ -27,9 +27,17 @@ jobs:
 
       - name: Install Makepad build tool
         run: |
+          set +e
           cargo install --git https://github.com/makepad/makepad \
             --rev 506ec05105b9adb08d1d21f9879df181b5244ea7 \
-            --package cargo-makepad
+            --package cargo-makepad 2>&1 | tee /tmp/makepad-install.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            tail -n 40 /tmp/makepad-install.log | while IFS= read -r line; do
+              echo "::error::makepad install: $line"
+            done
+            exit "$status"
+          fi
 
       - name: Install Android SDK and NDK
         working-directory: android-browser
