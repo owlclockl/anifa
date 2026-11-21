@@ -516,7 +516,7 @@ impl App {
             cx,
             Walk {
                 width: Size::Fixed(width),
-                height: Size::Fill,
+                height: Size::fill(),
                 ..Walk::default()
             },
         );
@@ -685,7 +685,7 @@ impl MatchEvent for App {
                 }
                 WebViewAction::Title(title) => {
                     if !title.is_empty() {
-                        self.ui.label(cx, ids!(tagline)).set_text(cx, title);
+                        self.ui.label(cx, ids!(tagline)).set_text(cx, &title);
                     }
                 }
                 _ => {}
