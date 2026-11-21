@@ -1,18 +1,13 @@
-=== https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/manifest-install.json
+=== https://raw.githack.com/owlclockl/anifa/owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html
+HTTP/2 403 
+content-type: text/html; charset=UTF-8
+=== https://rawcdn.githack.com/owlclockl/anifa/owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html
+HTTP/2 403 
+content-type: text/html; charset=UTF-8
+=== https://gitcdn.xyz/repo/owlclockl/anifa/owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html
+=== https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html?raw=1
 HTTP/2 200 
-content-type: application/json; charset=utf-8
-access-control-allow-origin: *
-cross-origin-resource-policy: cross-origin
-x-content-type-options: nosniff
-=== https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/extension.html
-HTTP/2 200 
-access-control-allow-origin: *
-cross-origin-resource-policy: cross-origin
-x-content-type-options: nosniff
 content-type: text/plain; charset=utf-8
-=== https://cdn.jsdelivr.net/gh/owlclockl/anifa@owlbear-round-counter-v1.0.2/owlbear-round-counter/dist/icon.svg
-HTTP/2 200 
 access-control-allow-origin: *
 cross-origin-resource-policy: cross-origin
 x-content-type-options: nosniff
-content-type: image/svg+xml
