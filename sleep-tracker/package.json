@@ -1,7 +1,7 @@
 {
-  "name": "sleep-tracker",
+  "name": "quiet-notes",
   "version": "1.0.0",
-  "description": "Desktop sleep log for steady nights — Electron app with motion design",
+  "description": "A simple desktop notes app",
   "main": "electron/main.js",
   "type": "commonjs",
   "scripts": {
@@ -17,8 +17,8 @@
     "vite": "^6.0.3"
   },
   "build": {
-    "appId": "com.owlclockl.sleep-tracker",
-    "productName": "Sleep Tracker",
+    "appId": "com.owlclockl.quiet-notes",
+    "productName": "Quiet Notes",
     "files": [
       "dist/**/*",
       "electron/**/*"
@@ -36,5 +36,5 @@
       "output": "release"
     }
   },
-  "author": "Sleep Tracker"
+  "author": "Quiet Notes"
 }

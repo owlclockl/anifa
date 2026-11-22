@@ -1,8 +1,2 @@
 const { contextBridge, ipcRenderer } = require('electron');
-
-contextBridge.exposeInMainWorld('sleepAPI', {
-  load: () => ipcRenderer.invoke('sleep:load'),
-  save: (data) => ipcRenderer.invoke('sleep:save', data),
-  openExternal: (url) => ipcRenderer.invoke('sleep:open-external', url),
-  isElectron: true,
-});
+contextBridge.exposeInMainWorld('notesAPI', { load: () => ipcRenderer.invoke('notes:load'), save: data => ipcRenderer.invoke('notes:save', data) });

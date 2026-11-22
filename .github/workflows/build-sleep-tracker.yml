@@ -1,4 +1,4 @@
-name: Build Sleep Tracker exe
+name: Build Quiet Notes exe
 
 on:
   push:
@@ -43,16 +43,16 @@ jobs:
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: sleep-tracker-exe
+          name: quiet-notes-exe
           path: sleep-tracker/release/*.exe
           if-no-files-found: error
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: sleep-tracker-v1.0.1
+          tag_name: quiet-notes-v1.0.0
           target_commitish: ${{ github.sha }}
-          name: Sleep Tracker v1.0.1
+          name: Quiet Notes v1.0.0
           files: sleep-tracker/release/*.exe
           fail_on_unmatched_files: true
           body: |
-            Установщик Sleep Tracker для Windows (64-bit). Скачайте файл .exe и запустите его. Данные хранятся на вашем компьютере.
+            Установщик Quiet Notes для Windows (64-bit). Скачайте файл .exe и запустите его. Данные хранятся на вашем компьютере.
