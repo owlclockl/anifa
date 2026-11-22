@@ -11,7 +11,7 @@ ipcMain.handle('notes:save', (_event, data) => {
   catch (err) { console.error(err); return false; }
 });
 function createWindow() {
-  const win = new BrowserWindow({ width: 1280, height: 840, minWidth: 760, minHeight: 580, backgroundColor: '#fafaf7', title: 'Тихие заметки', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
+  const win = new BrowserWindow({ width: 1280, height: 840, minWidth: 760, minHeight: 580, backgroundColor: '#202621', title: 'Тихие заметки', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
   if (!app.isPackaged) win.loadURL('http://localhost:5174'); else win.loadFile(path.join(__dirname, '../dist/index.html'));
 }
 app.whenReady().then(() => { createWindow(); app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); }); });

@@ -49,9 +49,9 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: quiet-notes-v1.0.0
+          tag_name: quiet-notes-v1.1.0
           target_commitish: ${{ github.sha }}
-          name: Quiet Notes v1.0.0
+          name: Quiet Notes v1.1.0
           files: sleep-tracker/release/*.exe
           fail_on_unmatched_files: true
           body: |

@@ -1,6 +1,6 @@
 {
   "name": "quiet-notes",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A simple desktop notes app",
   "main": "electron/main.js",
   "type": "commonjs",
