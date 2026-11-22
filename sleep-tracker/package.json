@@ -1,0 +1,27 @@
+{
+  "name": "sleep-tracker",
+  "version": "1.0.0",
+  "description": "Desktop sleep log for steady nights — Electron app with motion design",
+  "main": "electron/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5174",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5174",
+    "electron:dev": "vite --host 0.0.0.0 --port 5174 & sleep 3 && electron .",
+    "dist": "npm run build && electron-builder --win --mac --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "vite": "^6.0.3"
+  },
+  "build": {
+    "appId": "com.owlclockl.sleep-tracker",
+    "productName": "Sleep Tracker",
+    "files": ["dist/**/*", "electron/**/*"],
+    "win": { "target": "nsis" },
+    "mac": { "target": "dmg" },
+    "linux": { "target": "AppImage" }
+  }
+}
