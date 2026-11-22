@@ -19,9 +19,22 @@
   "build": {
     "appId": "com.owlclockl.sleep-tracker",
     "productName": "Sleep Tracker",
-    "files": ["dist/**/*", "electron/**/*"],
-    "win": { "target": "nsis" },
-    "mac": { "target": "dmg" },
-    "linux": { "target": "AppImage" }
-  }
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "directories": {
+      "output": "release"
+    }
+  },
+  "author": "Sleep Tracker"
 }
