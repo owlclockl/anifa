@@ -1,0 +1,73 @@
+name: Build Sleep Tracker exe
+
+on:
+  push:
+    tags:
+      - "sleep-tracker-v*"
+    branches:
+      - "arena/**"
+    paths:
+      - "sleep-tracker/**"
+      - ".github/workflows/build-sleep-tracker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sleep-tracker/package-lock.json
+
+      - name: Install dependencies
+        working-directory: sleep-tracker
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: sleep-tracker
+        run: npm run build
+
+      - name: Build Windows exe
+        working-directory: sleep-tracker
+        run: npx electron-builder --win --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List release files
+        working-directory: sleep-tracker
+        run: Get-ChildItem -Path release -Recurse | Select-Object FullName, Length
+
+      - name: Upload exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sleep-tracker-exe
+          path: sleep-tracker/release/*.exe
+          if-no-files-found: error
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sleep-tracker/release/*.exe
+          body: |
+            ## Sleep Tracker — Windows
+
+            Download `Sleep-Tracker-Setup-*.exe` and run it. No Node.js needed.
+
+            - Dashboard with nightly chart and sleep debt
+            - Sleep timer (hold to wake up)
+            - Log, history, settings, Ctrl+K palette
+            - Data stored on your computer
+
+            Built from tag `${{ github.ref_name }}`.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
