@@ -1,6 +1,12 @@
 name: Build Sleep Tracker exe
 
 on:
+  push:
+    branches:
+      - 'arena/b5fc70f8-anifa'
+    paths:
+      - 'sleep-tracker/**'
+      - '.github/workflows/build-sleep-tracker.yml'
   workflow_dispatch:
 
 permissions:
