@@ -6,6 +6,30 @@
 типографикой по шкале Material 3 и сеткой 4/8pt. Подробные правила и
 источники — в [design/DESIGN-RULES.md](design/DESIGN-RULES.md).
 
+## 📱 Готовый APK
+
+**[`android/zametki-notes.apk`](android/zametki-notes.apk)** — установочный файл
+приложения «Заметки» для Android (копия для загрузки с живого сервера —
+[`design/zametki-notes.apk`](design/zametki-notes.apk)).
+
+| Параметр | Значение |
+| --- | --- |
+| Пакет | `com.zametki.notes` |
+| Метка | «Заметки», иконка из `design/svg/app-icon.svg` |
+| SDK | min 24 (Android 7.0) … target 34 (Android 14) |
+| Экран | `MainActivity` — WebView с интерфактивным прототипом `design/index.html` (JS + localStorage) |
+| Подпись | v1 + v2 + v3 (самоподписанный debug-ключ `android/keys/`) |
+
+Установка: скопируйте APK на телефон → «Настройки → Приложения →
+Специальный доступ → Установка неизвестных приложений» разрешите установку
+из файлового менеджера → откройте APK → «Установить».
+
+Сборка из исходников (`android/build_apk.py`): `classes.dex` генерирует
+`android/make_dex.py` (DEX пишется вручную — байткод проверен androguard),
+ресурсы и манифест собирает `aapt2`, подписывает `android/sign.cjs`
+(apk_sign_ts). Проверка: `aapt2 dump badging` + pyaxmlparser + androguard —
+все проходят.
+
 ## Приложение «Заметки» (390 × 844)
 
 | Экран | Файл | Что на нём |
