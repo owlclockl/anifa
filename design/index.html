@@ -7,24 +7,24 @@
 <style>
   :root {
     --bg: #F4F3F9; --surface: #FFFFFF; --alt: #ECEAF5;
-    --ink: #17161C; --ink2: #55526B; --ink3: #9793AC;
-    --primary: #6C5CE7; --primary-soft: #ECE9FF;
-    --amber: #F5A524; --amber-soft: #FFF3DC;
-    --green: #1FA971; --green-soft: #E2F5EC;
-    --pink: #E64980; --pink-soft: #FCE7EE;
-    --blue: #3B82F6; --blue-soft: #E4EEFF;
+    --ink: #17161C; --ink2: #55526B; --ink3: #67627C;
+    --primary: #5B4BD6; --on-primary: #FFFFFF; --primary-soft: #ECE9FF;
+    --amber: #8A5F00; --amber-soft: #FFF3DC;
+    --green: #0F6E48; --green-soft: #E2F5EC;
+    --pink: #C22B66; --pink-soft: #FCE7EE;
+    --blue: #1F56D6; --blue-soft: #E4EEFF;
     --divider: #ECEAF5;
     --shadow: 0 6px 18px rgba(23, 22, 28, .08);
     --font: Inter, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
   body.dark {
     --bg: #121118; --surface: #1D1B25; --alt: #2A2736;
-    --ink: #F4F3FA; --ink2: #B3AEC6; --ink3: #7A748F;
-    --primary: #8B7CFF; --primary-soft: #2B2450;
-    --amber: #FFB443; --amber-soft: #33280F;
-    --green: #3ED598; --green-soft: #122B20;
-    --pink: #FF6FA5; --pink-soft: #33121F;
-    --blue: #71A5FF; --blue-soft: #152742;
+    --ink: #F4F3FA; --ink2: #B6B1C9; --ink3: #8F8AA5;
+    --primary: #9C8FFF; --on-primary: #1A1726; --primary-soft: #2B2450;
+    --amber: #FFC96B; --amber-soft: #33280F;
+    --green: #57D9A3; --green-soft: #122B20;
+    --pink: #FF8DB8; --pink-soft: #33121F;
+    --blue: #8FB6FF; --blue-soft: #152742;
     --divider: #2A2736;
     --shadow: 0 8px 22px rgba(0, 0, 0, .45);
   }
@@ -113,7 +113,7 @@
   }
   .chip.small { height: 34px; font-size: 13px; padding: 0 15px; border: 0; background: var(--alt); }
   .chip.tag { background: var(--primary-soft); color: var(--primary); border: 0; }
-  .chip.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .chip.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 
   /* секции */
   .section-title {
@@ -163,7 +163,7 @@
   /* FAB */
   .fab {
     position: absolute; right: 30px; bottom: 110px; width: 58px; height: 58px;
-    border-radius: 50%; border: 0; background: var(--primary); color: #fff;
+    border-radius: 50%; border: 0; background: var(--primary); color: var(--on-primary);
     font-size: 30px; font-weight: 300; cursor: pointer; z-index: 20;
     box-shadow: 0 12px 26px rgba(108, 92, 231, .45);
     display: flex; align-items: center; justify-content: center;

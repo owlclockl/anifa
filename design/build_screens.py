@@ -24,17 +24,21 @@ LIGHT = {
     "alt": "#ECEAF5",
     "ink": "#17161C",
     "ink2": "#55526B",
-    "ink3": "#9793AC",
-    "primary": "#6C5CE7",
-    "primary_dark": "#5546D6",
+    "ink3": "#67627C",
+    "primary": "#5B4BD6",
+    "primary_dark": "#4A3CC4",
     "primary_soft": "#ECE9FF",
-    "amber": "#F5A524",
+    "amber": "#8A5F00",
+    "amber_ui": "#B97E00",
     "amber_soft": "#FFF3DC",
-    "green": "#1FA971",
+    "green": "#0F6E48",
+    "green_ui": "#1FA971",
     "green_soft": "#E2F5EC",
-    "pink": "#E64980",
+    "pink": "#C22B66",
+    "pink_ui": "#E64980",
     "pink_soft": "#FCE7EE",
-    "blue": "#3B82F6",
+    "blue": "#1F56D6",
+    "blue_ui": "#3B82F6",
     "blue_soft": "#E4EEFF",
     "divider": "#ECEAF5",
     "shadow": "#17161C",
@@ -48,23 +52,27 @@ DARK = {
     "surface": "#1D1B25",
     "alt": "#2A2736",
     "ink": "#F4F3FA",
-    "ink2": "#B3AEC6",
-    "ink3": "#7A748F",
-    "primary": "#8B7CFF",
-    "primary_dark": "#7B6BF5",
+    "ink2": "#B6B1C9",
+    "ink3": "#8F8AA5",
+    "primary": "#9C8FFF",
+    "primary_dark": "#8B7CFF",
     "primary_soft": "#2B2450",
-    "amber": "#FFB443",
+    "amber": "#FFC96B",
+    "amber_ui": "#FFB443",
     "amber_soft": "#33280F",
-    "green": "#3ED598",
+    "green": "#57D9A3",
+    "green_ui": "#3ED598",
     "green_soft": "#122B20",
-    "pink": "#FF6FA5",
+    "pink": "#FF8DB8",
+    "pink_ui": "#FF6FA5",
     "pink_soft": "#33121F",
-    "blue": "#71A5FF",
+    "blue": "#8FB6FF",
+    "blue_ui": "#71A5FF",
     "blue_soft": "#152742",
     "divider": "#2A2736",
     "shadow": "#000000",
     "shadow_op": "0.35",
-    "on_primary": "#FFFFFF",
+    "on_primary": "#1A1726",
 }
 
 # ---------------------------------------------------------------- базовые фигуры
@@ -303,7 +311,7 @@ def tab_bar(t, active):
         if on:
             o.append(rect(cx - 26, 772, 52, 30, 15, fill=t["primary_soft"]))
         o.append(icon(name, cx, 787, 22, col))
-        o.append(text(cx, 812, label, 11, 600 if on else 500, col, anchor="middle"))
+        o.append(text(cx, 812, label, 12, 600 if on else 500, col, anchor="middle"))
     return "".join(o)
 
 
@@ -319,20 +327,20 @@ def chip(t, x, y, label, w, active=False, size=14, h=36, fill=None, color=None):
     return "".join(o)
 
 
-def chip_auto(t, x, y, label, active=False, size=14, h=36, padx=17, **kw):
+def chip_auto(t, x, y, label, active=False, size=14, h=36, padx=16, **kw):
     bold = kw.pop("bold", False)
     w = round(text_w(label, size, bold=active or bold)) + padx * 2
     return chip(t, x, y, label, w, active, size, h, **kw), w
 
 
 def section_title(t, x, y, label, right=None):
-    o = [text(x, y, label, 17, 700, t["ink"])]
+    o = [text(x, y, label, 20, 700, t["ink"])]
     if right:
         o.append(text(W - 24, y, right, 14, 600, t["primary"], anchor="end"))
     return "".join(o)
 
 
-def fab(t, cx=322, cy=718, r=29):
+def fab(t, cx=337, cy=718, r=29):
     o = [circle(cx, cy + 3, r, fill=t["shadow"], op=t["shadow_op"])]
     o.append(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="{t["primary"]}"/>')
     o.append(icon("plus", cx, cy, 26, t["on_primary"], sw=2.4))
@@ -353,30 +361,30 @@ def avatar(t, cx, cy, r=18, initials="АК", size=15):
 
 
 def pinned_card(t, x, y, w, h, tint, title, body_lines, meta, badge=None):
-    pad = 14
+    pad = 12
     o = [shadow_rect(x, y, w, h, 20, t), rect(x, y, w, h, 20, fill=tint)]
-    o.append(text(x + pad, y + 36, title, 14.5, 700, t["ink"]))
+    o.append(text(x + pad, y + 36, title, 14, 700, t["ink"]))
     for k, bl in enumerate(body_lines):
         o.append(text(x + pad, y + 60 + k * 20, bl, 12, 400, t["ink2"]))
     # нижний ряд: слева — булавка и дата
     o.append(icon("pin", x + pad + 7, y + h - 21, 14, t["ink3"]))
-    o.append(text(x + pad + 19, y + h - 16, meta, 11.5, 500, t["ink3"]))
+    o.append(text(x + pad + 19, y + h - 16, meta, 12, 500, t["ink3"]))
     if badge:
         by = y + 60 + len(body_lines) * 20 + 2
         o.append(icon(badge[0], x + pad + 6, by, 13, t["ink3"]))
-        o.append(text(x + pad + 18, by + 5, badge[1], 11.5, 500, t["ink3"]))
+        o.append(text(x + pad + 18, by + 5, badge[1], 12, 500, t["ink3"]))
     return "".join(o)
 
 
 def note_list_card(t, x, y, w, h, title, snippet, meta, tag=None, tag_bg=None, tag_fg=None):
     o = [shadow_rect(x, y, w, h, 18, t), rect(x, y, w, h, 18, fill=t["surface"])]
-    o.append(text(x + 18, y + 30, title, 15.5, 700, t["ink"]))
-    o.append(text(x + 18, y + 52, snippet, 13, 400, t["ink2"]))
-    o.append(text(x + 18, y + h - 15, meta, 11.5, 500, t["ink3"]))
+    o.append(text(x + 16, y + 30, title, 16, 700, t["ink"]))
+    o.append(text(x + 16, y + 52, snippet, 14, 400, t["ink2"]))
+    o.append(text(x + 16, y + h - 15, meta, 12, 500, t["ink3"]))
     if tag:
-        tw = round(text_w(tag, 11.5, True)) + 18
-        o.append(rect(x + w - 18 - tw, y + h - 29, tw, 20, 10, fill=tag_bg))
-        o.append(text(x + w - 18 - tw / 2, y + h - 15, tag, 11.5, 600, tag_fg, anchor="middle"))
+        tw = round(text_w(tag, 12, True)) + 16
+        o.append(rect(x + w - 16 - tw, y + h - 31, tw, 24, 12, fill=tag_bg))
+        o.append(text(x + w - 16 - tw / 2, y + h - 15, tag, 12, 600, tag_fg, anchor="middle"))
     return "".join(o)
 
 
@@ -384,7 +392,7 @@ def result_card(t, x, y, w, h, tspans_title, snippet, meta):
     o = [shadow_rect(x, y, w, h, 18, t), rect(x, y, w, h, 18, fill=t["surface"])]
     o.append(tspans_title)
     o.append(snippet)
-    o.append(text(x + 18, y + h - 15, meta, 11.5, 500, t["ink3"]))
+    o.append(text(x + 16, y + h - 15, meta, 12, 500, t["ink3"]))
     return "".join(o)
 
 
@@ -392,7 +400,7 @@ def settings_row(t, x, y, w, h, icon_name, icon_tint, icon_soft, label, value=No
     o = []
     o.append(rect(x + 14, y + (h - 34) / 2, 34, 34, 10, fill=icon_soft))
     o.append(icon(icon_name, x + 31, y + h / 2, 19, icon_tint))
-    o.append(text(x + 62, y + h / 2 + 5, label, 15, 600, t["ink"]))
+    o.append(text(x + 62, y + h / 2 + 5, label, 16, 600, t["ink"]))
     if value:
         o.append(text(x + w - 40, y + h / 2 + 5, value, 14, 500, t["ink3"], anchor="end"))
     if chevron:
@@ -413,7 +421,7 @@ def group_label(t, x, y, label):
 
 def screen_home(t):
     o = [rect(0, 0, W, H, 0, fill=t["bg"]), status_bar(t)]
-    o.append(text(24, 100, "Заметки", 30, 800, t["ink"]))
+    o.append(text(24, 100, "Заметки", 28, 800, t["ink"]))
     o.append(avatar(t, 348, 88, 19))
 
     # поиск
@@ -428,21 +436,21 @@ def screen_home(t):
     for label, active in [("Все", True), ("Избранные", False), ("Чек-листы", False), ("Фото", False), ("Голос", False)]:
         s, w = chip_auto(t, x, 186, label, active=active)
         clips.append(s)
-        x += w + 10
+        x += w + 8
     clips.append("</g>")
     o.extend(clips)
 
     # закреплённые
-    o.append(icon("pin", 34, 262, 17, t["ink"]))
-    o.append(text(50, 268, "Закреплённые", 17, 700, t["ink"]))
+    o.append(icon("pin", 34, 264, 18, t["ink"]))
+    o.append(text(52, 270, "Закреплённые", 20, 700, t["ink"]))
     o.append(pinned_card(
-        t, 24, 288, 166, 168, t["amber_soft"],
+        t, 24, 288, 165, 168, t["amber_soft"],
         "План на неделю",
         ["Типография: звонок", "Забрать посылку", "Билеты на пятницу"],
         "Вчера",
     ))
     o.append(pinned_card(
-        t, 200, 288, 166, 168, t["primary_soft"],
+        t, 201, 288, 165, 168, t["primary_soft"],
         "Идеи для проекта",
         ["Собрать макет экрана", "Тёмная тема и иконки"],
         "Сегодня",
@@ -472,16 +480,16 @@ def screen_home(t):
 def screen_editor(t):
     o = [rect(0, 0, W, H, 0, fill=t["bg"]), status_bar(t)]
     o.append(icon("chevron-left", 38, 84, 24, t["ink"]))
-    o.append(text(66, 89, "Изменено 2 мин назад", 13, 500, t["ink3"]))
+    o.append(text(66, 89, "Изменено 2 мин назад", 12, 500, t["ink3"]))
     o.append(icon("star", 286, 84, 22, t["primary"]))
     o.append(icon("share", 326, 84, 21, t["ink2"]))
     o.append(icon("dots", 362, 84, 22, t["ink2"]))
 
     o.append(text(24, 156, "Идеи для проекта", 28, 800, t["ink"]))
-    s, w = chip_auto(t, 24, 176, "Проект", size=12.5, h=28, padx=13,
+    s, w = chip_auto(t, 24, 176, "Проект", size=12, h=28, padx=12,
                      fill=t["primary_soft"], color=t["primary"], bold=True)
     o.append(s)
-    o.append(text(24 + w + 12, 195, "Сегодня, 14:32", 12.5, 500, t["ink3"]))
+    o.append(text(24 + w + 12, 195, "Сегодня, 14:32", 12, 500, t["ink3"]))
 
     o.append(text(24, 248, "Собрать макет главного экрана", 16, 400, t["ink2"]))
     o.append(text(24, 274, "и проверить тёмную тему.", 16, 400, t["ink2"]))
@@ -497,14 +505,14 @@ def screen_editor(t):
         if done:
             o.append(rect(24, y - 17, 22, 22, 7, fill=t["primary"]))
             o.append(icon("check", 35, y - 6, 15, t["on_primary"], sw=2.6))
-            o.append(text(60, y, label, 15.5, 500, t["ink3"]))
-            o.append(rect(60, y - 5.5, round(text_w(label, 15.5)), 1.4, 0.7, fill=t["ink3"]))
+            o.append(text(60, y, label, 16, 500, t["ink3"]))
+            o.append(rect(60, y - 5.5, round(text_w(label, 16)), 1.4, 0.7, fill=t["ink3"]))
         else:
             o.append(rect(24, y - 17, 22, 22, 7, fill="none", stroke=t["ink3"], sw=1.6))
-            o.append(text(60, y, label, 15.5, 500, t["ink"]))
+            o.append(text(60, y, label, 16, 500, t["ink"]))
         y += 44
     o.append(icon("plus", 32, y + 6, 17, t["primary"], sw=2.2))
-    o.append(text(50, y + 11, "Добавить пункт", 15, 600, t["primary"]))
+    o.append(text(50, y + 11, "Добавить пункт", 16, 600, t["primary"]))
 
     # нижняя панель инструментов
     o.append(shadow_rect(24, 744, 342, 62, 21, t))
@@ -518,7 +526,7 @@ def screen_editor(t):
 
 def screen_search(t):
     o = [rect(0, 0, W, H, 0, fill=t["bg"]), status_bar(t)]
-    o.append(text(24, 100, "Поиск", 30, 800, t["ink"]))
+    o.append(text(24, 100, "Поиск", 28, 800, t["ink"]))
 
     o.append(shadow_rect(24, 122, 342, 48, 24, t))
     o.append(rect(24, 122, 342, 48, 24, fill=t["surface"]))
@@ -542,7 +550,7 @@ def screen_search(t):
     for label in ("покупки", "встреча", "книги", "рецепты"):
         s, w = chip_auto(t, x, 286, label, size=13, h=34, padx=15, fill=t["alt"], color=t["ink2"])
         clip2.append(s)
-        x += w + 9
+        x += w + 8
     clip2.append("</g>")
     o.extend(clip2)
 
@@ -570,8 +578,8 @@ def screen_search(t):
     ]
     y = 392
     for parts, snip, meta in cards:
-        tt = hl_text(42, y + 32, 15.5, 700, t["ink"], parts, t)
-        sn = text(42, y + 54, snip, 13, 400, t["ink2"])
+        tt = hl_text(42, y + 32, 16, 700, t["ink"], parts, t)
+        sn = text(42, y + 54, snip, 14, 400, t["ink2"])
         o.append(result_card(t, 24, y, 342, 84, tt, sn, meta))
         y += 96
 
@@ -582,23 +590,23 @@ def screen_search(t):
 
 def screen_folders(t):
     o = [rect(0, 0, W, H, 0, fill=t["bg"]), status_bar(t)]
-    o.append(text(24, 100, "Папки", 30, 800, t["ink"]))
+    o.append(text(24, 100, "Папки", 28, 800, t["ink"]))
     o.append(circle(348, 88, 19, fill=t["primary_soft"]))
     o.append(icon("plus", 348, 88, 19, t["primary"], sw=2.2))
 
     folders = [
-        ("Работа", "12 заметок", t["blue"], t["blue_soft"], 24, 128),
-        ("Личное", "8 заметок", t["green"], t["green_soft"], 200, 128),
-        ("Идеи", "23 заметки", t["amber"], t["amber_soft"], 24, 264),
-        ("Покупки", "5 заметок", t["pink"], t["pink_soft"], 200, 264),
+        ("Работа", "12 заметок", t["blue_ui"], t["blue_soft"], 24, 128),
+        ("Личное", "8 заметок", t["green_ui"], t["green_soft"], 201, 128),
+        ("Идеи", "23 заметки", t["amber_ui"], t["amber_soft"], 24, 264),
+        ("Покупки", "5 заметок", t["pink_ui"], t["pink_soft"], 201, 264),
     ]
     for name, count, fg, soft, x, y in folders:
-        o.append(shadow_rect(x, y, 166, 122, 20, t))
-        o.append(rect(x, y, 166, 122, 20, fill=t["surface"]))
-        o.append(rect(x + 18, y + 18, 42, 42, 13, fill=soft))
-        o.append(icon("folder", x + 39, y + 39, 23, fg))
-        o.append(text(x + 18, y + 88, name, 16, 700, t["ink"]))
-        o.append(text(x + 18, y + 108, count, 12.5, 500, t["ink3"]))
+        o.append(shadow_rect(x, y, 165, 122, 20, t))
+        o.append(rect(x, y, 165, 122, 20, fill=t["surface"]))
+        o.append(rect(x + 16, y + 16, 42, 42, 13, fill=soft))
+        o.append(icon("folder", x + 37, y + 37, 23, fg))
+        o.append(text(x + 16, y + 88, name, 16, 700, t["ink"]))
+        o.append(text(x + 16, y + 108, count, 12, 500, t["ink3"]))
 
     o.append(section_title(t, 24, 438, "Метки"))
     x = 24
@@ -606,15 +614,15 @@ def screen_folders(t):
     for label in ("#проект", "#дом", "#книги", "#финансы"):
         s, w = chip_auto(t, x, 456, label, size=13, h=34, padx=15, fill=t["primary_soft"], color=t["primary"], bold=True)
         clip.append(s)
-        x += w + 9
+        x += w + 8
     clip.append("</g>")
     o.extend(clip)
 
     o.append(section_title(t, 24, 542, "Системные"))
     o.append(shadow_rect(24, 560, 342, 112, 18, t))
     o.append(rect(24, 560, 342, 112, 18, fill=t["surface"]))
-    o.append(settings_row(t, 24, 560, 342, 56, "archive", t["blue"], t["blue_soft"], "Архив", value="24", chevron=True, divider=True))
-    o.append(settings_row(t, 24, 616, 342, 56, "trash", t["pink"], t["pink_soft"], "Корзина", value="7", chevron=True, divider=False))
+    o.append(settings_row(t, 24, 560, 342, 56, "archive", t["blue_ui"], t["blue_soft"], "Архив", value="24", chevron=True, divider=True))
+    o.append(settings_row(t, 24, 616, 342, 56, "trash", t["pink_ui"], t["pink_soft"], "Корзина", value="7", chevron=True, divider=False))
 
     o.append(tab_bar(t, "Папки"))
     o.append(home_indicator(t))
@@ -623,13 +631,13 @@ def screen_folders(t):
 
 def screen_settings(t):
     o = [rect(0, 0, W, H, 0, fill=t["bg"]), status_bar(t)]
-    o.append(text(24, 100, "Настройки", 30, 800, t["ink"]))
+    o.append(text(24, 100, "Настройки", 28, 800, t["ink"]))
 
     o.append(shadow_rect(24, 122, 342, 76, 18, t))
     o.append(rect(24, 122, 342, 76, 18, fill=t["surface"]))
     o.append(avatar(t, 62, 160, 23, size=17))
     o.append(text(98, 152, "Анна Ковалёва", 16, 700, t["ink"]))
-    o.append(text(98, 174, "anna.kovaleva@notes.app", 12.5, 400, t["ink2"]))
+    o.append(text(98, 174, "anna.kovaleva@notes.app", 12, 400, t["ink2"]))
     o.append(icon("chevron-right", 342, 160, 18, t["ink3"]))
 
     def group(y0, label, rows):
@@ -643,16 +651,16 @@ def screen_settings(t):
 
     g1, y1 = group(228, "ВНЕШНИЙ ВИД", [
         ("moon", t["primary"], t["primary_soft"], "Тема", "Светлая", None, True, True),
-        ("type", t["green"], t["green_soft"], "Размер текста", "Средний", None, True, False),
+        ("type", t["green_ui"], t["green_soft"], "Размер текста", "Средний", None, True, False),
     ])
     o.append(g1)
     g2, y2 = group(y1 + 28, "СИНХРОНИЗАЦИЯ", [
-        ("cloud", t["blue"], t["blue_soft"], "Синхронизация", "Включена", None, False, True),
-        ("clock", t["amber"], t["amber_soft"], "Резервные копии", "Ежедневно", None, True, False),
+        ("cloud", t["blue_ui"], t["blue_soft"], "Синхронизация", "Включена", None, False, True),
+        ("clock", t["amber_ui"], t["amber_soft"], "Резервные копии", "Ежедневно", None, True, False),
     ])
     o.append(g2)
     g3, y3 = group(y2 + 28, "БЕЗОПАСНОСТЬ", [
-        ("user", t["pink"], t["pink_soft"], "Face ID", None, True, False, True),
+        ("user", t["pink_ui"], t["pink_soft"], "Face ID", None, True, False, True),
         ("lock", t["ink2"], t["alt"], "Код-пароль", None, False, False, False),
     ])
     o.append(g3)

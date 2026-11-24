@@ -17,8 +17,9 @@ const fontFiles = [
 for (const file of fs.readdirSync(svgDir).filter((f) => f.endsWith(".svg"))) {
   const svg = fs.readFileSync(path.join(svgDir, file), "utf8");
   const isIcon = file === "app-icon.svg";
+  const isPhone = !isIcon && !/ui-kit|landing|banner/.test(file);
   const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: isIcon ? 512 : 780 },
+    fitTo: isIcon ? { mode: "width", value: 512 } : isPhone ? { mode: "width", value: 780 } : { mode: "zoom", value: 1 },
     font: { fontFiles, loadSystemFonts: true, defaultFontFamily: "DejaVu Sans" },
   });
   const png = resvg.render().asPng();
