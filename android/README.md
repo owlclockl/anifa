@@ -4,7 +4,7 @@
 
 ## APK
 
-GitHub Actions workflow `.github/workflows/android-apk.yml` собирает installable debug APK для изменений в `android/` на ветке Arena. Артефакт `iskra-android-apk` содержит `app-debug.apk`. APK подписан debug-ключом и подходит для установки вручную на Android (разрешите установку приложений из источника, откуда скачан файл).
+GitHub Actions workflow `.github/workflows/android-apk.yml` собирает installable debug APK для изменений в `android/` на ветке Arena. Артефакт `iskra-android-apk` содержит `app-debug.apk`; готовый файл также публикуется в корне ветки как `apk/iskra.apk`. APK подписан debug-ключом и подходит для установки вручную на Android (разрешите установку приложений из источника, откуда скачан файл).
 
 ## Локальная сборка
 
