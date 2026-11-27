@@ -5,7 +5,7 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_iskra"
         android:roundIcon="@drawable/ic_iskra"
-        android:label="Искра"
+        android:label="Искра Судоку"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
         <activity

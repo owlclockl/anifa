@@ -1,221 +1,231 @@
 (() => {
+  'use strict';
   const $ = (id) => document.getElementById(id);
-  const screens = { home: $('home-screen'), game: $('game-screen'), result: $('result-screen') };
-  const difficultyNames = { easy: 'РАЗМИНКА', medium: 'ВПОЛНЕ СИЛЬНО', hard: 'ДЛЯ МАСТЕРОВ' };
-  const difficultyNotes = { easy: 'Для разминки', medium: 'Самое время подумать', hard: 'Брось себе вызов' };
-  let difficulty = 'easy';
-  let puzzles = [];
-  let index = 0;
-  let results = [];
-  let answered = false;
-  let currentHint = 0;
-  let seriesNumber = Number(localStorage.getItem('iskra-series') || 0);
-  let soundOn = false;
-  const stats = JSON.parse(localStorage.getItem('iskra-stats') || '{"solved":0,"best":0}');
-  const el = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text !== undefined) node.textContent = text; return node; };
-  const pick = (items) => items[Math.floor(Math.random() * items.length)];
-  const int = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-  const escapeHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const clean = (value) => String(value ?? '').trim().toLocaleUpperCase('ru-RU').replaceAll('Ё','Е').replace(/[\s.,!?;:]+/g, '');
-  const seriesLabel = () => String(seriesNumber).padStart(3, '0');
-  const formatNumber = (n) => Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2))).replace('.', ',');
+  const LEVELS = {
+    easy: {label:'Легко', note:'Хороший старт для разминки', clueCount:40},
+    medium: {label:'Средне', note:'Пора применить исключение', clueCount:34},
+    hard: {label:'Сложно', note:'Понадобятся точные заметки', clueCount:29},
+    expert: {label:'Эксперт', note:'Каждая цифра имеет значение', clueCount:25}
+  };
+  const TEMPLATES = {
+    easy: ['000421000412376890300005001740003200936200710085700000093182007000509100120047000','859421376412376895367895421741963258936258714285714963593182647674539182128647539'],
+    medium: ['000600000070052030003074920300000079001297306097360008140000000500106702008500060','952613847874952631613874925365481279481297356297365418146728593539146782728539164'],
+    hard: ['006800000030090000010243009003024106600000040045000370520000400000002060000438900','956871234432695817718243659873524196691387542245169378529716483384952761167438925'],
+    expert: ['290080600007000002060001000085000207009030061000000800010000000000068040000094705','291587634857643912463921578385416297729835461146279853914752386572368149638194725']
+  };
+  const storageKey = 'iskra-sudoku-state-v2';
+  const profileKey = 'iskra-sudoku-profile-v2';
+  const LEVELS_ORDER = ['easy','medium','hard','expert'];
+  let profile = readProfile();
+  let state = readState();
+  let history = [];
+  let toastTimer = 0;
+  let selectedNewLevel = 'easy';
 
-  function showScreen(name) {
-    Object.entries(screens).forEach(([key, screen]) => screen.classList.toggle('hidden', key !== name));
-    window.scrollTo({top: 0, behavior: 'smooth'});
+  function readProfile() {
+    try {
+      const value = JSON.parse(localStorage.getItem(profileKey) || '{}');
+      return {solved:Number(value.solved)||0, bestTimes:value.bestTimes||{}, todayDate:value.todayDate||'', todaySolved:Number(value.todaySolved)||0, nextId:Number(value.nextId)||1};
+    } catch (_) { return {solved:0,bestTimes:{},todayDate:'',todaySolved:0,nextId:1}; }
+  }
+  function readState() {
+    try {
+      const s = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      if (!s || !Array.isArray(s.puzzle) || !Array.isArray(s.solution) || !Array.isArray(s.values) || s.puzzle.length!==81 || s.solution.length!==81 || s.values.length!==81 || !LEVELS[s.level]) return null;
+      s.notes = Array.isArray(s.notes)&&s.notes.length===81 ? s.notes : Array.from({length:81},()=>[]);
+      s.selected = Number.isInteger(s.selected)&&s.selected>=0&&s.selected<81 ? s.selected : 0;
+      s.seconds = Math.max(0,Number(s.seconds)||0); s.mistakes = Math.max(0,Number(s.mistakes)||0); s.hints = Math.max(0,Number(s.hints)||0);
+      s.completed = Boolean(s.completed); s.revealed = Boolean(s.revealed); s.noteMode = Boolean(s.noteMode);
+      return s;
+    } catch (_) { return null; }
+  }
+  function save() {
+    try { localStorage.setItem(storageKey,JSON.stringify(state)); localStorage.setItem(profileKey,JSON.stringify(profile)); } catch (_) { /* Continue for private browsing modes that disable storage. */ }
+  }
+  function shuffle(values) {
+    const a=values.slice();
+    for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+    return a;
+  }
+  function groupedPermutation() {
+    return shuffle([0,1,2]).flatMap(group=>shuffle([0,1,2]).map(item=>group*3+item));
+  }
+  function transformedTemplate(level) {
+    const [puzzleText,solutionText]=TEMPLATES[level];
+    const sourcePuzzle=Array.from(puzzleText,Number), sourceSolution=Array.from(solutionText,Number);
+    const rows=groupedPermutation(), cols=groupedPermutation(), digits=[0,...shuffle([1,2,3,4,5,6,7,8,9])];
+    const transpose=Math.random()<.5;
+    const puzzle=Array(81), solution=Array(81);
+    for(let r=0;r<9;r++) for(let c=0;c<9;c++) {
+      const oldR=transpose?cols[c]:rows[r], oldC=transpose?rows[r]:cols[c], old=oldR*9+oldC, now=r*9+c;
+      puzzle[now]=digits[sourcePuzzle[old]];
+      solution[now]=digits[sourceSolution[old]];
+    }
+    return {puzzle,solution};
+  }
+  function makeGame(level) {
+    const grid=transformedTemplate(level), id=profile.nextId++;
+    return {id,level,puzzle:grid.puzzle,solution:grid.solution,values:grid.puzzle.slice(),notes:Array.from({length:81},()=>[]),selected:grid.puzzle.findIndex(n=>n===0),seconds:0,mistakes:0,hints:0,noteMode:false,completed:false,revealed:false};
+  }
+  function formatTime(seconds) {
+    const n=Math.max(0,Number(seconds)||0), mm=String(Math.floor(n/60)).padStart(2,'0'), ss=String(n%60).padStart(2,'0');
+    return `${mm}:${ss}`;
+  }
+  function today() { return new Date().toISOString().slice(0,10); }
+  function showToast(text) {
+    const box=$('toast'); box.textContent=text; box.classList.add('visible'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>box.classList.remove('visible'),2200);
+  }
+  function openNewGame(level=state.level) {
+    selectedNewLevel=level;
+    document.querySelectorAll('.dialog-level').forEach(button=>button.classList.toggle('selected',button.dataset.newLevel===level));
+    const dialog=$('new-game-dialog'); if(!dialog.open) dialog.showModal();
+  }
+  function startNewGame(level) {
+    history=[]; state=makeGame(level); save(); renderAll();
+    if($('new-game-dialog').open) $('new-game-dialog').close();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function addHistory() {
+    history.push({values:state.values.slice(),notes:state.notes.map(row=>row.slice()),selected:state.selected});
+    if(history.length>40)history.shift();
+  }
+  function undo() {
+    if(state.completed){showToast('Партия уже завершена');return;}
+    const last=history.pop();
+    if(!last){showToast('Пока нечего отменять');return;}
+    state.values=last.values;state.notes=last.notes;state.selected=last.selected;save();renderAll();
+  }
+  function boxIndex(index) { return Math.floor(Math.floor(index/9)/3)*3+Math.floor((index%9)/3); }
+  function conflicts() {
+    const bad=new Set();
+    for(let i=0;i<81;i++){
+      const v=state.values[i]; if(!v)continue;
+      const r=Math.floor(i/9), c=i%9, b=boxIndex(i);
+      for(let j=i+1;j<81;j++) if(state.values[j]===v){const rr=Math.floor(j/9),cc=j%9;if(r===rr||c===cc||b===boxIndex(j)){bad.add(i);bad.add(j);}}
+    }
+    return bad;
+  }
+  function renderBoard() {
+    const board=$('sudoku-board'), bad=conflicts(), selected=state.selected, selectedValue=state.values[selected], sr=Math.floor(selected/9), sc=selected%9, sb=boxIndex(selected);
+    const fragment=document.createDocumentFragment();
+    for(let i=0;i<81;i++){
+      const row=Math.floor(i/9),col=i%9,value=state.values[i], given=state.puzzle[i]!==0;
+      const cell=document.createElement('button'); cell.type='button'; cell.className='cell'; cell.dataset.index=i; cell.setAttribute('role','gridcell'); cell.tabIndex=i===selected?0:-1;
+      if(given)cell.classList.add('given');
+      if(i===selected)cell.classList.add('selected');
+      else if(row===sr||col===sc||boxIndex(i)===sb)cell.classList.add('related');
+      if(selectedValue&&value===selectedValue&&i!==selected)cell.classList.add('same-value');
+      if(bad.has(i))cell.classList.add('conflict');
+      if(value&&value!==state.solution[i])cell.classList.add('error');
+      const label=`Строка ${row+1}, колонка ${col+1}${given?`, исходная цифра ${value}`:value?`, введено ${value}`:', пустая'}`;
+      cell.setAttribute('aria-label',label); cell.setAttribute('aria-selected',i===selected?'true':'false');
+      if(value)cell.textContent=String(value);
+      else if(state.notes[i]?.length){cell.classList.add('notes-cell');const notes=document.createElement('span');notes.className='notes-grid';for(let n=1;n<=9;n++){const mark=document.createElement('i');mark.textContent=state.notes[i].includes(n)?String(n):'';notes.append(mark);}cell.append(notes);}
+      cell.addEventListener('click',()=>{state.selected=i;save();renderAll();});
+      fragment.append(cell);
+    }
+    board.replaceChildren(fragment);
+    const empty=state.values.filter(v=>!v).length, filled=81-empty;
+    $('fill-count').textContent=`${String(filled).padStart(2,'0')} / 81`;
+    $('fill-meter').style.transform=`scaleX(${filled/81})`;
+    $('mistakes').textContent=state.mistakes;
+    $('puzzle-id').textContent=String(state.id).padStart(3,'0');
+    $('selected-coordinate').textContent=`${sr+1} / ${sc+1}`;
+    $('selected-hint').textContent=state.completed?(state.revealed?'Решение открыто. Начни новую партию, чтобы сыграть ещё.':'Сетка решена. Отличная работа!'):state.puzzle[selected]?'Исходная цифра — её нельзя стереть.':state.values[selected]?'Твоя цифра. Выбери другую, если хочешь заменить её.':'Пустая клетка. Введи цифру или добавь заметку.';
+    $('board-status').textContent=state.completed?(state.revealed?'Решение показано':'Сетка решена — отлично'):state.noteMode?'Режим заметок включён':'Выбери клетку и введи цифру';
+    $('timer').textContent=formatTime(state.seconds);
+    $('note-button').classList.toggle('active',state.noteMode);$('note-button').setAttribute('aria-pressed',String(state.noteMode));
+    document.querySelectorAll('.level-button').forEach(button=>button.classList.toggle('active',button.dataset.level===state.level));
+    $('level-caption').textContent=LEVELS[state.level].note;
+    document.querySelectorAll('.number-button').forEach(button=>{const num=Number(button.dataset.number);const count=state.values.filter(v=>v===num).length;button.classList.toggle('disabled',count===9);button.setAttribute('aria-label',`Ввести цифру ${num}${count===9?', все цифры уже стоят':''}`);});
+    $('undo-button').disabled=history.length===0||state.completed;
+    $('hint-button').disabled=state.completed;
+    $('note-button').disabled=state.completed;
+    $('erase-button').disabled=state.completed;
+    $('solve-button').disabled=state.completed;
+    $('number-pad').setAttribute('aria-disabled',String(state.completed));
+  }
+  function renderProfile() {
+    const date=today();if(profile.todayDate!==date){profile.todayDate=date;profile.todaySolved=0;save();}
+    $('stat-solved').textContent=profile.solved;
+    $('stat-best').textContent=profile.bestTimes[state.level]?formatTime(profile.bestTimes[state.level]):'—';
+    $('stat-streak').textContent=profile.todaySolved;
+  }
+  function renderAll() {renderBoard();renderProfile();}
+  function applyNumber(number) {
+    if(state.completed)return;
+    const i=state.selected;
+    if(state.puzzle[i]){showToast('Эта цифра уже задана');return;}
+    if(state.noteMode){
+      addHistory();const notes=state.notes[i];const at=notes.indexOf(number);if(at>=0)notes.splice(at,1);else notes.push(number);notes.sort((a,b)=>a-b);save();renderAll();return;
+    }
+    if(state.values[i]===number){eraseSelected();return;}
+    addHistory();state.values[i]=number;state.notes[i]=[];
+    if(number!==state.solution[i]){state.mistakes++;showToast('Не совпало с решением — попробуй ещё раз');}
+    save();renderAll();checkSolved();
+  }
+  function eraseSelected() {
+    if(state.completed)return;
+    const i=state.selected;
+    if(state.puzzle[i]){showToast('Исходную цифру нельзя стереть');return;}
+    if(!state.values[i]&&!state.notes[i].length){showToast('Клетка уже пустая');return;}
+    addHistory();state.values[i]=0;state.notes[i]=[];save();renderAll();
+  }
+  function toggleNotes() {if(state.completed)return;state.noteMode=!state.noteMode;save();renderAll();if(state.noteMode)showToast('Заметки включены — выбери цифру');}
+  function revealHint() {
+    if(state.completed)return;
+    const i=state.selected;if(state.puzzle[i]){showToast('Выбери пустую клетку');return;}
+    addHistory();state.values[i]=state.solution[i];state.notes[i]=[];state.hints++;state.noteMode=false;save();renderAll();showToast('Цифра добавлена. Продолжай!');checkSolved();
+  }
+  function completeGame(revealed=false) {
+    if(state.completed)return;
+    state.completed=true;state.revealed=revealed;
+    if(!revealed){
+      profile.solved++;profile.todayDate=today();profile.todaySolved++;
+      const previous=profile.bestTimes[state.level];if(!previous||state.seconds<previous)profile.bestTimes[state.level]=state.seconds;
+    }
+    save();renderAll();
+    if(!revealed){$('win-time').textContent=formatTime(state.seconds);$('win-dialog').showModal();}
+    else showToast('Решение судоку показано');
+  }
+  function checkSolved() {if(state.values.every((value,i)=>value===state.solution[i]))completeGame(false);}
+  function solveGame() {if(state.completed)return;state.values=state.solution.slice();state.notes=Array.from({length:81},()=>[]);state.noteMode=false;completeGame(true);}
+  function moveSelection(dr,dc) {
+    const row=Math.floor(state.selected/9),col=state.selected%9;
+    state.selected=Math.max(0,Math.min(8,row+dr))*9+Math.max(0,Math.min(8,col+dc));save();renderAll();
+  }
+  function chooseNextEditable(direction=1) {
+    let i=state.selected;
+    for(let step=0;step<81;step++){i=(i+direction+81)%81;if(!state.puzzle[i]){state.selected=i;break;}}
+    save();renderAll();
+  }
+  function handleKey(event) {
+    if(event.key==='Escape')return;
+    if($('new-game-dialog').open||$('solve-dialog').open||$('win-dialog').open)return;
+    if(/^[1-9]$/.test(event.key)){event.preventDefault();applyNumber(Number(event.key));return;}
+    if(event.key==='ArrowUp'){event.preventDefault();moveSelection(-1,0);return;}
+    if(event.key==='ArrowDown'){event.preventDefault();moveSelection(1,0);return;}
+    if(event.key==='ArrowLeft'){event.preventDefault();moveSelection(0,-1);return;}
+    if(event.key==='ArrowRight'){event.preventDefault();moveSelection(0,1);return;}
+    if(event.key==='Backspace'||event.key==='Delete'){event.preventDefault();eraseSelected();return;}
+    if(event.key.toLowerCase()==='n'){event.preventDefault();toggleNotes();return;}
+    if(event.key.toLowerCase()==='u'||(event.ctrlKey&&event.key.toLowerCase()==='z')){event.preventDefault();undo();}
   }
 
-  function makePuzzles() {
-    const list = [];
-    const add = (p) => list.push(p);
-    // 1 — Алгебра
-    {
-      const limit = difficulty === 'easy' ? 12 : difficulty === 'medium' ? 30 : 65;
-      const x = int(3, limit), a = int(2, difficulty === 'easy' ? 12 : 24);
-      const op = pick(['+', '−']);
-      const rhs = op === '+' ? x + a : x - a;
-      add({type:'number', icon:'x', category:'АЛГЕБРА', title:'Найди неизвестное', prompt:`Какое число скрывается за x?\n\nx ${op} ${a} = ${rhs}`, answer:String(x), hint:'Сделай обратное действие: перенеси известное число через знак равенства.', explanation:`Чтобы оставить x, выполняем обратное действие: ${op === '+' ? `${rhs} − ${a}` : `${rhs} + ${a}`} = ${x}.`, suffix:'x ='});
-    }
-    // 2 — Числовая последовательность
-    {
-      let start, step, values;
-      if (difficulty === 'hard' && Math.random() > .45) {
-        start = int(2, 5); step = pick([2,3,4]); values = Array.from({length:5},(_,i)=>start*step**i);
-      } else {
-        step = int(difficulty === 'easy' ? 2 : 3, difficulty === 'easy' ? 8 : 14) * (Math.random() < .3 ? -1 : 1);
-        start = int(difficulty === 'easy' ? 2 : 8, difficulty === 'easy' ? 20 : 50);
-        values = Array.from({length:5},(_,i)=>start+i*step);
-      }
-      const delta = values[1] - values[0];
-      const answer = values[4] + (difficulty === 'hard' && values[1] / values[0] === step ? values[4] * (step - 1) : delta);
-      const geometric = difficulty === 'hard' && values[1] / values[0] === step;
-      add({type:'number', icon:'…', category:'ЧИСЛОВОЙ РЯД', title:'Продолжи ряд', prompt:'Найди закономерность и впиши следующее число.', visual:values.join('   ')+'   ?', answer:String(answer), hint:geometric ? 'Каждое число умножается на одно и то же число.' : `Посчитай разницу между соседними числами: она каждый раз ${delta < 0 ? 'одинаково уменьшается' : 'одинакова'}.`, explanation:geometric ? `Каждый раз умножаем на ${step}: ${values[4]} × ${step} = ${answer}.` : `Шаг ряда равен ${delta}. Прибавляем его ещё раз: ${values[4]} + (${delta}) = ${answer}.`});
-    }
-    // 3 — Анаграмма
-    {
-      const words = difficulty === 'easy' ? ['РАДУГА','КОМЕТА','КАРТИНА','ПИРОГИ','РОМАШКА','ЗАМОК'] : difficulty === 'medium' ? ['ГОРИЗОНТ','КАЛЕНДАРЬ','ПРИКЛЮЧЕНИЕ','МУЗЫКАНТ','ЗАГАДКА','ПУТЕШЕСТВИЕ'] : ['ВООБРАЖЕНИЕ','РАССУЖДЕНИЕ','ПРОСТРАНСТВО','СОЗВЕЗДИЕ','НЕОЖИДАННОСТЬ','ПЕРСПЕКТИВА'];
-      const answer = pick(words); let scrambled = answer.split('');
-      for(let i=0;i<10 && scrambled.join('')===answer;i++) scrambled.sort(()=>Math.random()-.5);
-      if(scrambled.join('')===answer) scrambled.reverse();
-      add({type:'text', icon:'↗', category:'СЛОВА', title:'Буквы перепутались', prompt:'Собери из букв существительное. Каждая буква используется один раз.', visual:scrambled.join(' · '), answer, hint:`В слове ${answer.length} букв. Попробуй сначала найти знакомый слог.`, explanation:`Буквы складываются в слово «${answer}».`, placeholder:'Впиши слово'});
-    }
-    // 4 — Судоку 4×4
-    {
-      const nums = [1,2,3,4].sort(()=>Math.random()-.5);
-      let grid = Array.from({length:4},(_,r)=>Array.from({length:4},(_,c)=>nums[(r*2+Math.floor(r/2)+c)%4]));
-      if(Math.random()>.5) grid = grid.map(row=>[...row].reverse());
-      if(Math.random()>.5) grid = [grid[1],grid[0],grid[3],grid[2]];
-      const keep = difficulty==='easy'?10:difficulty==='medium'?7:5;
-      const positions = Array.from({length:16},(_,i)=>i).sort(()=>Math.random()-.5);
-      const given = Array.from({length:4},(_,r)=>Array.from({length:4},(_,c)=>grid[r][c]));
-      positions.slice(0,16-keep).forEach(i=>given[Math.floor(i/4)][i%4]=0);
-      add({type:'sudoku', icon:'▦', category:'СУДОКУ', title:'Заполни квадраты', prompt:'В каждой строке, колонке и квадрате 2 × 2 должны быть числа от 1 до 4 — без повторов.', given, solution:grid, hint:'Начни со строки или квадрата, где уже стоят три числа. В каждой ячейке может быть только один вариант.', explanation:'Проверь, чтобы цифры 1, 2, 3 и 4 встречались ровно по одному разу в каждой строке, колонке и области 2 × 2.'});
-    }
-    // 5 — Логическая цепочка
-    {
-      const people = ['Лена','Ира','Олег','Макс','Вера','Даня'];
-      const names = people.slice(0, difficulty==='hard'?5:4).sort(()=>Math.random()-.5);
-      const clues = names.slice(0,-1).map((name,i)=>`${name} стоит в очереди раньше, чем ${names[i+1]}.`);
-      const last = names[names.length-1];
-      add({type:'text', icon:'≋', category:'ЛОГИКА', title:'Кто пришёл последним?', prompt:`Люди заходили по одному. Известно, что:\n${clues.map(x=>'• '+x).join('\n')}\n\nКто вошёл последним?`, answer:last, hint:'Выстрой имена в цепочку: каждый следующий пришёл после предыдущего.', explanation:`Порядок однозначно задаётся цепочкой: ${names.join(' → ')}. Последним был(а) ${last}.`, placeholder:'Имя'});
-    }
-    // 6 — Загадка
-    {
-      const riddles = [
-        {q:'Без рук, без ног, а ворота открывает. Что это?',a:'ВЕТЕР',hint:'Его не видно, но его можно почувствовать.',exp:'Это ветер: он может распахнуть ворота.'},
-        {q:'Зимой и летом одним цветом. Что это?',a:'ЕЛЬ',hint:'Это дерево, которое не сбрасывает иголки на зиму.',exp:'Это ель — вечнозелёное хвойное дерево.'},
-        {q:'Чем больше из неё берёшь, тем больше она становится. Что это?',a:'ЯМА',hint:'В земле может появиться, если долго копать.',exp:'Это яма: чем больше земли вынуть, тем она больше.'},
-        {q:'Что можно увидеть с закрытыми глазами?',a:'СОН',hint:'Это бывает ночью, пока ты спишь.',exp:'Это сон.'},
-        {q:'У него есть города, но нет домов; есть реки, но нет воды. Что это?',a:'КАРТА',hint:'Её раскрывают, чтобы найти дорогу.',exp:'Это карта — на ней обозначены города и реки.'}
-      ];
-      const r=pick(riddles); add({type:'text',icon:'?',category:'ЗАГАДКА',title:'Подумай образно',prompt:r.q,answer:r.a,accepted:r.a==='ЕЛЬ'?['ЕЛКА']:[],hint:r.hint,explanation:r.exp,placeholder:'Твой ответ'});
-    }
-    // 7 — Операции
-    {
-      const ops = ['+','−','×','÷']; const op = pick(ops);
-      let a,b,target;
-      if(op==='+'){a=int(8,32);b=int(3,19);target=a+b;} else if(op==='−'){a=int(20,60);b=int(2,Math.min(18,a-1));target=a-b;} else if(op==='×'){a=int(3,12);b=int(3,12);target=a*b;} else {b=int(2,12);target=int(3,12);a=b*target;}
-      add({type:'choice',icon:'±',category:'МАТЕМАТИКА',title:'Верный знак',prompt:`Какой знак нужно поставить вместо пропуска?\n\n${a}  ?  ${b} = ${target}`,choices:ops,answer:op,hint:'Проверь по очереди: сложение, вычитание, умножение и деление. Какое действие даёт правую часть?',explanation:`Подходит знак «${op}»: ${a} ${op} ${b} = ${target}.`});
-    }
-    // 8 — Лишнее слово
-    {
-      const groups=[
-        {items:['Сосна','Берёза','Ромашка','Клён'],odd:'Ромашка',hint:'Три варианта — деревья.',reason:'Ромашка — цветок, остальные — деревья.'},
-        {items:['Квадрат','Треугольник','Круг','Километр'],odd:'Километр',hint:'Три варианта — геометрические фигуры.',reason:'Километр — единица длины, остальные — фигуры.'},
-        {items:['Январь','Среда','Апрель','Август'],odd:'Среда',hint:'Три варианта — месяцы.',reason:'Среда — день недели, остальные — месяцы.'},
-        {items:['Ложка','Тарелка','Кастрюля','Подушка'],odd:'Подушка',hint:'Три вещи можно найти на кухне.',reason:'Подушка не кухонная утварь.'},
-        {items:['Скрипка','Флейта','Барабан','Палитра'],odd:'Палитра',hint:'Три варианта связаны с музыкой.',reason:'Палитра нужна художнику, остальные — музыкальные инструменты.'}
-      ];
-      const g=pick(groups); add({type:'choice',icon:'◌',category:'НАБЛЮДАТЕЛЬНОСТЬ',title:'Найди лишнее',prompt:'Выбери слово, которое не подходит к остальным.',choices:g.items,answer:g.odd,hint:g.hint,explanation:g.reason});
-    }
-    // 9 — Визуальный паттерн
-    {
-      const symbols = difficulty==='hard' ? ['◆','●','●','◆','●','●','◆','?'] : ['▲','●','●','▲','●','●','▲','?'];
-      const answer = difficulty==='hard' ? '●' : '●';
-      add({type:'choice',icon:'◈',category:'ПАТТЕРН',title:'Увидь ритм',prompt:'Какой символ должен стоять на месте вопросительного знака?',visual:symbols.join('   '),choices:difficulty==='hard'?['●','▲','■','◆']:['●','▲','■','◆'],answer,hint:'Посмотри на повторяющиеся группы символов.',explanation:'Повторяется группа из трёх символов: ◆, ●, ● (или ▲, ●, ●). После ◆ снова идут два круга.'});
-    }
-    // 10 — Геометрия
-    {
-      const a=int(difficulty==='easy'?3:5,difficulty==='easy'?9:18), b=int(difficulty==='easy'?3:5,difficulty==='easy'?10:16);
-      const area = difficulty==='hard' || Math.random()>.55;
-      const answer=area?a*b:2*(a+b);
-      add({type:'number',icon:'▱',category:'ГЕОМЕТРИЯ',title:area?'Площадь прямоугольника':'Периметр прямоугольника',prompt:area?'Найди площадь прямоугольника со сторонами:':'Найди периметр прямоугольника со сторонами:',visual:`${a} см   ×   ${b} см`,answer:String(answer),hint:area?'Площадь равна произведению длины на ширину.':'Периметр — это сумма всех четырёх сторон.',explanation:area?`Площадь = ${a} × ${b} = ${answer} см².`:`Периметр = 2 × (${a} + ${b}) = ${answer} см.`,suffix:area?'см²':'см'});
-    }
-    return list;
-  }
-
-  function renderPuzzle() {
-    const card = document.querySelector('.puzzle-card');
-    card.classList.remove('replay');
-    void card.offsetWidth;
-    card.classList.add('replay');
-    const p = puzzles[index]; answered=false; currentHint=0;
-    $('feedback').textContent=''; $('feedback').className='feedback';
-    $('solution-button').classList.remove('hidden'); $('solution-button').textContent='Показать решение ↗';
-    $('hint-button').disabled=false; $('check-button').disabled=false; $('check-button').querySelector('span').textContent='Проверить';
-    $('puzzle-icon').textContent=p.icon; $('puzzle-category').textContent=p.category;
-    $('puzzle-title').textContent=p.title; $('puzzle-prompt').textContent=p.prompt;
-    $('puzzle-difficulty').textContent=difficultyNames[difficulty];
-    $('progress-label').innerHTML=`ЗАДАЧА ${String(index+1).padStart(2,'0')} <span>/ 10</span>`;
-    $('progress-percent').textContent=`${(index+1)*10}%`; $('progress-bar').style.width=`${(index+1)*10}%`;
-    const content=$('puzzle-content'); content.replaceChildren();
-    if(p.visual){ const visual=el('div','puzzle-visual'+(p.type==='choice'?' symbol-sequence':''),p.visual); content.append(visual); }
-    if(p.type==='number'||p.type==='text'){
-      const row=el('div','answer-row');
-      if(p.suffix==='x =') row.append(el('span','answer-suffix','x ='));
-      const input=el('input','answer-input'+(p.type==='number'?' numeric':'')); input.id='answer-input'; input.type='text'; input.autocomplete='off'; input.autocapitalize='off'; input.spellcheck=false; input.placeholder=p.placeholder||'Введи ответ';
-      if(p.type==='number'){input.inputMode='decimal';input.setAttribute('aria-label','Числовой ответ');}
-      row.append(input); if(p.suffix&&p.suffix!=='x =') row.append(el('span','answer-suffix',p.suffix)); content.append(row);
-      input.addEventListener('keydown', e=>{if(e.key==='Enter')checkAnswer();});
-    } else if(p.type==='choice'){
-      const choices=el('div','choice-list'); p.choices.forEach(option=>{const button=el('button','choice-button',option);button.type='button';button.addEventListener('click',()=>{choices.querySelectorAll('.choice-button').forEach(b=>b.classList.remove('selected'));button.classList.add('selected');});choices.append(button);}); content.append(choices);
-    } else if(p.type==='sudoku'){
-      const board=el('div','sudoku'); board.setAttribute('role','group'); board.setAttribute('aria-label','Судоку четыре на четыре');
-      p.given.forEach((row,r)=>row.forEach((value,c)=>{const cell=document.createElement('input');cell.className='sudoku-cell'+(value?' given':'');cell.type='text';cell.inputMode='numeric';cell.maxLength=1;cell.setAttribute('aria-label',`Строка ${r+1}, столбец ${c+1}`);cell.dataset.r=r;cell.dataset.c=c;if(value){cell.value=value;cell.readOnly=true;}cell.addEventListener('input',()=>{cell.value=cell.value.replace(/[^1-4]/g,'').slice(-1);});board.append(cell);})); content.append(board);
-    }
-    if(p.clues){ const ul=el('ul','logic-clues');p.clues.forEach(c=>ul.append(el('li','',c)));content.append(ul); }
-    if(p.type==='sudoku') $('puzzle-prompt').textContent=p.prompt;
-    if(p.type==='number'||p.type==='text') setTimeout(()=>{const input=$('answer-input');if(input)input.focus({preventScroll:true});},50);
-  }
-
-  function currentAnswer() {
-    const p=puzzles[index];
-    if(p.type==='sudoku') return [...document.querySelectorAll('.sudoku-cell')].map(x=>x.value).join('');
-    if(p.type==='choice') return document.querySelector('.choice-button.selected')?.textContent || '';
-    return $('answer-input')?.value.trim() || '';
-  }
-  function isCorrect() {
-    const p=puzzles[index]; const value=currentAnswer();
-    if(p.type==='sudoku') return [...document.querySelectorAll('.sudoku-cell')].every((cell,i)=>cell.value===String(p.solution[Math.floor(i/4)][i%4]));
-    if(p.type==='number') return Number(String(value).replace(',','.'))===Number(p.answer);
-    const normalized=clean(value);
-    return normalized===clean(p.answer)||(p.accepted||[]).some(a=>normalized===clean(a));
-  }
-  function checkAnswer() {
-    if(answered)return;
-    const val=currentAnswer();
-    if(!val || (puzzles[index].type==='sudoku'&&val.split('').some(cell=>!cell))) { showFeedback(puzzles[index].type==='sudoku'?'Заполни все клетки, затем проверь.':'Сначала введи ответ или выбери вариант.',true); return; }
-    const ok=isCorrect(); answered=true; results[index]=ok;
-    showFeedback(ok?'Верно! Именно так. ✦':'Пока не совпало. Можно попробовать ещё раз или посмотреть подсказку.',!ok);
-    if(!ok){answered=false;results[index]=false;}
-    else { $('check-button').querySelector('span').textContent=index===9?'Результаты':'Следующая задача'; $('solution-button').classList.add('hidden'); }
-    if(soundOn)playTone(ok?660:220);
-  }
-  function showFeedback(message,error=false){const box=$('feedback');box.textContent=message;box.className='feedback'+(error?' error':'');}
-  function showHint(){const p=puzzles[index];if(currentHint===0){showFeedback('Подсказка: '+p.hint);currentHint=1;}else{showFeedback('Подсказка: '+p.hint);}}
-  function revealSolution(){
-    const p=puzzles[index]; const box=el('div','solution-box'); box.textContent='Решение: '+p.explanation;
-    const old=$('puzzle-content').querySelector('.solution-box');if(old)old.remove();$('puzzle-content').append(box);
-    $('solution-button').classList.add('hidden'); $('feedback').textContent='Ответ открыт — продолжай, когда будешь готов.'; $('feedback').className='feedback';
-    results[index]=false; answered=true; $('check-button').querySelector('span').textContent=index===9?'Результаты':'Следующая задача';
-  }
-  function nextPuzzle(){if(index<9){index++;renderPuzzle();}else finishSeries();}
-  function finishSeries(){
-    const count=results.filter(Boolean).length; stats.solved=(stats.solved||0)+count; stats.best=Math.max(stats.best||0,count); localStorage.setItem('iskra-stats',JSON.stringify(stats));
-    $('result-score').textContent=count; $('result-percent').textContent=`${count*10}%`;
-    $('result-title').textContent=count===10?'Безупречно!':count>=7?'Отличная работа.':count>=4?'Хорошая разминка.':'Первый шаг сделан.';
-    $('result-subtitle').textContent=count===10?'Все десять задач решены верно — твой ум сегодня в отличной форме.':'Ты прошёл через десять разных способов мыслить. Каждая серия делает тебя сильнее.';
-    const missed=puzzles.map((p,i)=>results[i]?null:p.title).filter(Boolean);
-    $('result-summary').textContent=missed.length?`Можно вернуться к новым задачам и попробовать ещё. ${missed.length===10?'В следующий раз всё получится!':`На этот раз особенно задуматься пришлось над: ${missed.join(', ')}.`}`:'Все форматы покорены. Так держать!';
-    $('best-streak').textContent=stats.best; $('solved-total').textContent=stats.solved;
-    showScreen('result');
-  }
-  function startSeries(){
-    seriesNumber++;localStorage.setItem('iskra-series',String(seriesNumber));$('series-number').textContent=seriesLabel();$('game-series-number').textContent=seriesLabel();
-    puzzles=makePuzzles();index=0;results=Array(10).fill(false);renderPuzzle();showScreen('game');
-  }
-  function goHome(){showScreen('home');$('best-streak').textContent=stats.best||0;$('solved-total').textContent=stats.solved||0;}
-  function playTone(frequency){try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator();const gain=ctx.createGain();osc.frequency.value=frequency;gain.gain.setValueAtTime(.07,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.12);osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+.12);}catch(_){}}
-
-  document.querySelectorAll('.difficulty-option').forEach(button=>button.addEventListener('click',()=>{difficulty=button.dataset.level;document.querySelectorAll('.difficulty-option').forEach(b=>{b.classList.toggle('selected',b===button);b.setAttribute('aria-pressed',b===button?'true':'false');});$('difficulty-note').textContent=difficultyNotes[difficulty];}));
-  $('start-button').addEventListener('click',startSeries);
-  $('check-button').addEventListener('click',()=>answered?nextPuzzle():checkAnswer());
-  $('hint-button').addEventListener('click',showHint);
-  $('solution-button').addEventListener('click',revealSolution);
-  $('skip-button').addEventListener('click',()=>{if(!answered)results[index]=false;nextPuzzle();});
-  $('back-button').addEventListener('click',()=>{if(confirm('Выйти из серии? Текущий прогресс этой серии не сохранится.'))goHome();});
-  $('again-button').addEventListener('click',startSeries); $('result-home').addEventListener('click',goHome);
-  $('sound-toggle').addEventListener('click',()=>{soundOn=!soundOn;$('sound-toggle').classList.toggle('active',soundOn);$('sound-toggle').setAttribute('aria-label',soundOn?'Звук включён':'Звук выключен');if(soundOn)playTone(440);});
-  $('series-number').textContent=String(seriesNumber+1).padStart(3,'0');$('best-streak').textContent=stats.best||0;$('solved-total').textContent=stats.solved||0;
-  if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+  if(!state){state=makeGame('easy');save();}
+  renderAll();
+  document.querySelectorAll('.number-button').forEach(button=>button.addEventListener('click',()=>applyNumber(Number(button.dataset.number))));
+  document.querySelectorAll('.level-button').forEach(button=>button.addEventListener('click',()=>openNewGame(button.dataset.level)));
+  document.querySelectorAll('.dialog-level').forEach(button=>button.addEventListener('click',()=>{selectedNewLevel=button.dataset.newLevel;document.querySelectorAll('.dialog-level').forEach(b=>b.classList.toggle('selected',b===button));}));
+  $('new-game-top').addEventListener('click',()=>openNewGame(state.level));
+  $('start-new-game').addEventListener('click',()=>startNewGame(selectedNewLevel));
+  $('win-new-game').addEventListener('click',()=>{$('win-dialog').close();openNewGame(state.level);});
+  $('note-button').addEventListener('click',toggleNotes);
+  $('hint-button').addEventListener('click',revealHint);
+  $('erase-button').addEventListener('click',eraseSelected);
+  $('undo-button').addEventListener('click',undo);
+  $('solve-button').addEventListener('click',()=>{if(!state.completed)$('solve-dialog').showModal();});
+  $('confirm-solve').addEventListener('click',()=>{$('solve-dialog').close();solveGame();});
+  document.addEventListener('keydown',handleKey);
+  setInterval(()=>{if(!state.completed){state.seconds++;$('timer').textContent=formatTime(state.seconds);save();}},1000);
 })();

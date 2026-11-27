@@ -1,10 +1,10 @@
-# Искра — Android
+# Искра Судоку — Android
 
-Нативная Android-оболочка с офлайн-копией ANSI-тренажёра в `app/src/main/assets/www/`. APK автоматически собирается при изменении файлов этой папки на ветке Arena.
+Нативная Android-оболочка содержит офлайн-копию Sudoku-игры в `app/src/main/assets/www/`. Игра включает сетку 9×9, четыре сложности, карандашные заметки, проверку ходов, подсказки, отмену и показ ответа.
 
 ## APK
 
-GitHub Actions workflow `.github/workflows/android-apk.yml` собирает installable debug APK для изменений в `android/` на ветке Arena. Артефакт `iskra-android-apk` содержит `app-debug.apk`; готовый файл также публикуется в корне ветки как `apk/iskra.apk`. APK подписан debug-ключом и подходит для установки вручную на Android (разрешите установку приложений из источника, откуда скачан файл).
+GitHub Actions workflow `.github/workflows/android-apk.yml` собирает installable debug APK для изменений в `android/` на ветке Arena. Итоговый файл `apk/iskra.apk` подписан debug-ключом и предназначен для ручной установки на Android 6.0+.
 
 ## Локальная сборка
 
@@ -15,4 +15,4 @@ cd android
 gradle --no-daemon :app:assembleDebug
 ```
 
-Выходной файл: `app/build/outputs/apk/debug/app-debug.apk`.
+APK появится в `app/build/outputs/apk/debug/app-debug.apk`.

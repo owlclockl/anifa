@@ -3,103 +3,166 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#070b0c">
-  <meta name="description" content="Десять разных головоломок в одной серии. Решай, проверяй и открывай ответы.">
+  <meta name="theme-color" content="#10251f">
+  <meta name="description" content="Искра — лаконичное судоку с умными подсказками, заметками и несколькими уровнями сложности.">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
-  <title>Искра — тренажёр головоломок</title>
+  <title>Искра Судоку — тренируй логику</title>
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#home" aria-label="Искра — на главную">
-        <span class="brand-mark">&gt;_</span><span>ISKRA<span class="brand-dot">.EXE</span></span>
+      <a class="brand" href="#game" aria-label="Искра Судоку">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="brand-word">ИСКРА <b>/</b> СУДОКУ</span>
       </a>
-      <div class="top-actions">
-        <span class="daily-tag"><span class="live-dot"></span> SYSTEM ONLINE</span>
-        <button class="icon-button" id="sound-toggle" aria-label="Звук выключен" title="Звуковой сигнал" type="button">♫</button>
+      <div class="header-right">
+        <span class="online-status"><i></i> Тренировка активна</span>
+        <button class="new-game-top" id="new-game-top" type="button"><span>+</span> Новая партия</button>
       </div>
     </header>
 
-    <main>
-      <section id="home-screen" class="home-screen">
-        <div class="hero-copy">
-          <div class="eyebrow"><span class="eyebrow-line"></span> BOOT SEQUENCE // 001</div>
-          <pre class="ascii-portrait" aria-label="ASCII-арт: Искра, терминал для тренировки ума">     .-------------------.
-    /  .---------------.  \\
-   |  /   [  ИСКРА  ]   \\  |
-   | |   .-----------.   | |
-   | |   |  &gt;_ МЫСЛИ |   | |
-   | |   '-----------'   | |
-   |  \\     *  *  *    /  |
-    \\  '---------------' /
-     '---._________.---'</pre>
-          <h1>Думай вне<br><em>шаблона<span class="cursor">_</span></em></h1>
-          <p class="hero-description">10 задач. 10 способов взломать рутину. Числа, слова и логика — запускай свою ежедневную тренировку.</p>
-          <div class="hero-meta"><span>[ TIME: 08–12 MIN ]</span><span class="meta-divider"></span><span>[ PUZZLES: 10 ]</span></div>
+    <main id="game" class="main-content">
+      <section class="intro-row" aria-label="Заголовок игры">
+        <div>
+          <div class="eyebrow"><span>Судоку / 01</span><span class="eyebrow-line"></span><span>Поле 9×9</span></div>
+          <h1>Судоку<span class="title-period">.</span></h1>
+          <p class="intro-copy">Заполни сетку. Доверься логике.</p>
         </div>
-
-        <div class="start-card">
-          <div class="card-topline"><span>НАСТРОЙ СЕРИЮ</span><span class="series-number">№ <span id="series-number">001</span></span></div>
-          <div class="difficulty-label">Сложность <span class="difficulty-note" id="difficulty-note">Для разминки</span></div>
-          <div class="difficulty-picker" role="group" aria-label="Выбери сложность">
-            <button type="button" class="difficulty-option selected" data-level="easy" aria-pressed="true">Легко</button>
-            <button type="button" class="difficulty-option" data-level="medium" aria-pressed="false">Средне</button>
-            <button type="button" class="difficulty-option" data-level="hard" aria-pressed="false">Сложно</button>
-          </div>
-          <div class="types-preview">
-            <div class="type-stack" aria-hidden="true"><span>∑</span><span>▦</span><span>✳</span><span>…</span></div>
-            <div><strong>10 форматов</strong><small>Ни одной одинаковой задачи</small></div>
-            <span class="preview-arrow">↗</span>
-          </div>
-          <button class="primary-button" id="start-button" type="button"><span>Начать серию</span><span class="button-arrow">→</span></button>
-          <p class="privacy-note">Без таймера. Без спешки. Только ты и задача.</p>
-        </div>
-
-        <div class="home-bottom">
-          <div class="stat-card"><span class="stat-icon">◉</span><div><strong id="best-streak">0</strong><small>лучший результат</small></div></div>
-          <div class="stat-card"><span class="stat-icon">✓</span><div><strong id="solved-total">0</strong><small>решено всего</small></div></div>
-          <div class="home-quote">«Ум — это не сосуд, который нужно наполнить,<br>а факел, который нужно зажечь».</div>
+        <div class="daily-stamp" aria-label="Тренировка для ума">
+          <span class="stamp-top">Размер поля</span>
+          <span class="stamp-symbol">9×9</span>
+          <span class="stamp-bottom">Четыре уровня</span>
         </div>
       </section>
 
-      <section id="game-screen" class="game-screen hidden" aria-live="polite">
-        <div class="game-heading">
-          <button id="back-button" class="back-button" type="button"><span>←</span> На главную</button>
-          <div class="series-label">СЕРИЯ <span id="game-series-number">001</span></div>
-        </div>
-        <div class="progress-row"><span id="progress-label">ЗАДАЧА 01 <span>/ 10</span></span><span id="progress-percent">10%</span></div>
-        <div class="progress-track"><div id="progress-bar" class="progress-bar"></div></div>
+      <section class="game-layout" aria-label="Игра в судоку">
+        <aside class="side-panel left-panel">
+          <section class="panel-block level-block">
+            <div class="panel-heading"><span class="tiny-index">01</span><h2>Сложность</h2></div>
+            <div class="level-list" role="group" aria-label="Сложность партии">
+              <button class="level-button" type="button" data-level="easy"><span class="level-mark">01</span><span>Легко</span><i></i></button>
+              <button class="level-button" type="button" data-level="medium"><span class="level-mark">02</span><span>Средне</span><i></i></button>
+              <button class="level-button" type="button" data-level="hard"><span class="level-mark">03</span><span>Сложно</span><i></i></button>
+              <button class="level-button" type="button" data-level="expert"><span class="level-mark">04</span><span>Эксперт</span><i></i></button>
+            </div>
+            <p class="level-caption" id="level-caption">Хороший старт для разминки</p>
+          </section>
 
-        <article class="puzzle-card">
-          <div class="puzzle-top"><div class="puzzle-category"><span id="puzzle-icon">∑</span><span id="puzzle-category">МАТЕМАТИКА</span></div><span id="puzzle-difficulty" class="puzzle-level">РАЗМИНКА</span></div>
-          <h2 id="puzzle-title">Найди неизвестное</h2>
-          <p id="puzzle-prompt" class="puzzle-prompt"></p>
-          <div id="puzzle-content" class="puzzle-content"></div>
-          <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
-          <div class="puzzle-actions">
-            <button id="check-button" class="primary-button check-button" type="button"><span>Проверить</span><span class="button-arrow">→</span></button>
-            <button id="hint-button" class="secondary-button" type="button">Подсказка <span>✦</span></button>
+          <section class="panel-block stats-block">
+            <div class="panel-heading"><span class="tiny-index">02</span><h2>Твой прогресс</h2></div>
+            <div class="stat-line"><span>Решено</span><strong id="stat-solved">0</strong></div>
+            <div class="stat-line"><span>Лучшее время</span><strong id="stat-best">—</strong></div>
+            <div class="stat-line"><span>Сегодня решено</span><strong id="stat-streak">0</strong></div>
+          </section>
+
+          <div class="ascii-note" aria-label="Подсказка по судоку">
+            <span class="note-label">Правило 01</span>
+            <pre>┌─────┬─────┬─────┐
+│ 1 2 │ 3 4 │ 5 6 │
+│ 4 5 │ 6 7 │ 8 9 │
+├─────┼─────┼─────┤
+│ 7 8 │ 9 1 │ 2 3 │
+└─────┴─────┴─────┘</pre>
+            <p>Цифры <b>1–9</b> — по одному разу в каждой строке, колонке и квадрате 3×3.</p>
           </div>
-          <button id="solution-button" class="solution-link" type="button">Показать решение <span>↗</span></button>
-        </article>
+        </aside>
 
-        <div class="game-footer"><div class="footer-mark">✳</div><span>Каждый ответ — маленькая победа</span><button id="skip-button" type="button">Пропустить</button></div>
+        <section class="board-panel" aria-label="Поле судоку">
+          <div class="board-toolbar">
+            <div class="puzzle-id"><span class="pulse-dot"></span><span>Партия <b id="puzzle-id">001</b></span></div>
+            <div class="game-metrics">
+              <div class="metric"><span class="metric-icon">◷</span><strong id="timer">00:00</strong></div>
+              <span class="metric-divider"></span>
+              <div class="metric mistakes-metric"><span class="metric-icon">×</span><strong><span id="mistakes">0</span><small>ошибок</small></strong></div>
+            </div>
+          </div>
+
+          <div id="sudoku-board" class="sudoku-board" role="grid" aria-label="Игровая сетка судоку 9 на 9"></div>
+
+          <div class="board-status-row">
+            <span id="board-status">Выбери клетку и введи цифру</span>
+            <span class="fill-meter"><i id="fill-meter"></i></span>
+            <span id="fill-count">00 / 81</span>
+          </div>
+
+          <div id="number-pad" class="number-pad" role="group" aria-label="Выбор цифры">
+            <button class="number-button" type="button" data-number="1">1</button>
+            <button class="number-button" type="button" data-number="2">2</button>
+            <button class="number-button" type="button" data-number="3">3</button>
+            <button class="number-button" type="button" data-number="4">4</button>
+            <button class="number-button" type="button" data-number="5">5</button>
+            <button class="number-button" type="button" data-number="6">6</button>
+            <button class="number-button" type="button" data-number="7">7</button>
+            <button class="number-button" type="button" data-number="8">8</button>
+            <button class="number-button" type="button" data-number="9">9</button>
+          </div>
+
+          <div class="board-help"><span class="help-key">1–9</span> ввод цифры <span class="help-sep">·</span> <span class="help-key">← ↑ ↓ →</span> перемещение</div>
+        </section>
+
+        <aside class="side-panel right-panel">
+          <section class="panel-block selected-block">
+            <div class="panel-heading"><span class="tiny-index">03</span><h2>Твоя клетка</h2></div>
+            <div class="selected-readout"><span id="selected-coordinate">— / —</span><span class="coordinate-label">строка / колонка</span></div>
+            <p id="selected-hint" class="selected-hint">Выбери клетку на поле</p>
+          </section>
+
+          <section class="tools-block" aria-label="Инструменты">
+            <button id="note-button" class="tool-button note-tool" type="button" aria-pressed="false"><span class="tool-icon">✎</span><span><b>Заметки</b><small>Карандаш <kbd>N</kbd></small></span><span class="toggle-indicator"></span></button>
+            <button id="hint-button" class="tool-button" type="button"><span class="tool-icon hint-icon">✦</span><span><b>Подсказка</b><small>Открыть цифру</small></span><span class="tool-arrow">↗</span></button>
+            <button id="undo-button" class="tool-button" type="button"><span class="tool-icon">↶</span><span><b>Отменить</b><small>Последний ход</small></span><kbd>U</kbd></button>
+            <button id="erase-button" class="tool-button" type="button"><span class="tool-icon">⌫</span><span><b>Стереть</b><small>Очистить клетку</small></span><kbd>⌫</kbd></button>
+          </section>
+
+          <button id="solve-button" class="solve-button" type="button"><span>Показать решение</span><span>↗</span></button>
+
+          <div class="quote-card"><span class="quote-mark">Совет</span><p>Ищи «одиночку»: цифру, которой в выбранном квадрате подходит только одна клетка.</p></div>
+        </aside>
       </section>
 
-      <section id="result-screen" class="result-screen hidden">
-        <div class="result-burst" aria-hidden="true">✳</div>
-        <div class="eyebrow"><span class="eyebrow-line"></span> СЕРИЯ ЗАВЕРШЕНА</div>
-        <h1 id="result-title">Отличная работа.</h1>
-        <p id="result-subtitle" class="result-subtitle">Ты прошёл через десять разных способов мыслить.</p>
-        <div class="result-score"><strong id="result-score">0</strong><span>из 10<br>решено верно</span><div class="score-divider"></div><strong id="result-percent">0%</strong></div>
-        <div class="result-summary" id="result-summary"></div>
-        <button class="primary-button result-button" id="again-button" type="button"><span>Ещё одну серию</span><span class="button-arrow">→</span></button>
-        <button class="solution-link home-link" id="result-home" type="button">Вернуться на главную</button>
-      </section>
+      <footer class="page-footer"><span>Искра <b>·</b> Судоку / 1.0</span><span><i class="footer-live"></i> Сохранено на устройстве</span></footer>
     </main>
-    <footer class="site-footer"><span>ИСКРА <span>·</span> ТРЕНАЖЁР МЫШЛЕНИЯ</span><span>Сделано для любопытных</span></footer>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <dialog id="new-game-dialog" class="app-dialog">
+      <form method="dialog" class="dialog-inner">
+        <button class="dialog-close" aria-label="Закрыть" value="cancel">×</button>
+        <span class="dialog-kicker">Новая головоломка</span>
+        <h2>Выбери уровень.</h2>
+        <p>Начнётся новая сетка. Победа засчитывается, только если решить её самостоятельно.</p>
+        <div class="dialog-levels" role="group" aria-label="Уровень новой партии">
+          <button type="button" class="dialog-level selected" data-new-level="easy">Легко</button>
+          <button type="button" class="dialog-level" data-new-level="medium">Средне</button>
+          <button type="button" class="dialog-level" data-new-level="hard">Сложно</button>
+          <button type="button" class="dialog-level" data-new-level="expert">Эксперт</button>
+        </div>
+        <button id="start-new-game" type="button" class="dialog-start">Создать судоку <span>→</span></button>
+      </form>
+    </dialog>
+
+    <dialog id="solve-dialog" class="app-dialog">
+      <form method="dialog" class="dialog-inner">
+        <button class="dialog-close" aria-label="Закрыть" value="cancel">×</button>
+        <span class="dialog-kicker">Решение судоку</span>
+        <h2>Открыть решение?</h2>
+        <p>Сетка будет заполнена целиком. Партия не попадёт в число решённых самостоятельно.</p>
+        <div class="dialog-buttons"><button class="dialog-cancel" value="cancel">Остаться</button><button id="confirm-solve" type="button" class="dialog-start">Показать <span>→</span></button></div>
+      </form>
+    </dialog>
+
+    <dialog id="win-dialog" class="app-dialog win-dialog">
+      <form method="dialog" class="dialog-inner">
+        <div class="win-spark">9×9</div>
+        <span class="dialog-kicker">Сетка заполнена</span>
+        <h2>Решено</h2>
+        <p>Судоку решено за <b id="win-time">00:00</b>. Отличная работа — каждая цифра на своём месте.</p>
+        <button id="win-new-game" type="button" class="dialog-start">Новая партия <span>→</span></button>
+        <button class="dialog-cancel win-close" value="close">Посмотреть сетку</button>
+      </form>
+    </dialog>
   </div>
   <script src="app.js"></script>
 </body>
